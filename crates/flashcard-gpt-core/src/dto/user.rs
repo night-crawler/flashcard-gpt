@@ -1,11 +1,11 @@
 use crate::dto::time::Time;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use surrealdb::sql::Thing;
+use surrealdb::RecordId;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
-    pub id: Option<Thing>,
+    pub id: Option<RecordId>,
     pub email: Arc<String>,
     pub name: Arc<String>,
     pub password: Arc<String>,

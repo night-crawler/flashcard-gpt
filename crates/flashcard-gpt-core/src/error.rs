@@ -1,4 +1,7 @@
 use std::sync::Arc;
+#[cfg(test)]
+
+use testcontainers::TestcontainersError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum CoreError {
@@ -6,4 +9,14 @@ pub enum CoreError {
     DbError(#[from] surrealdb::Error),
     #[error("Failed to create user: {0:?}")]
     CreateUserError(Arc<String>),
+
+    #[cfg(test)]
+    #[error("Failed to start test container: {0}")]
+    TestContainersError(#[from] TestcontainersError),
+ 
+    #[error("Not found: {0}:{1}")]
+    NotFound(&'static str, String),
+
+    #[error("Mutex is poisoned: {0}")]
+    MutexPoisoned(String),
 }

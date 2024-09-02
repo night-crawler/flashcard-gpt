@@ -1,5 +1,5 @@
 [core]
-    path = "./tests-files"
+    path = "./db-migrations"
     schema = "full"
 
 [db]

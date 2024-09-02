@@ -1,3 +1,6 @@
 pub mod dto;
 pub mod repo;
-mod error;
+pub mod error;
+pub mod ext;
+#[cfg(test)]
+pub mod tests;

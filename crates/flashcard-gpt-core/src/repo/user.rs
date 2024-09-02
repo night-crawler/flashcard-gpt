@@ -2,6 +2,7 @@ use crate::dto::user::User;
 use crate::error::CoreError;
 use surrealdb::engine::remote::ws::Client;
 use surrealdb::Surreal;
+use crate::ext::record_id::RecordIdExt;
 
 pub struct UserRepo {
     db: Surreal<Client>,
@@ -36,34 +37,33 @@ impl UserRepo {
         let created_user = created_user.ok_or(CoreError::CreateUserError(email))?;
         Ok(created_user)
     }
+
+    pub async fn get_user_by_id(&self, id: impl RecordIdExt) -> Result<User, CoreError> {
+        let id = id.record_id();
+        let user: Option<User> = self.db.select(id.clone()).await?;
+        if let Some(user) = user {
+            Ok(user)
+        } else {
+            Err(CoreError::NotFound("user", id.to_string()))
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::dto::user::User;
-    use surrealdb::engine::remote::ws::Ws;
-    use surrealdb::opt::auth::Root;
+    use crate::tests::TEST_DB;
 
     #[tokio::test]
     async fn test_create_surrealdb_connection() -> Result<(), CoreError> {
-        let db = Surreal::new::<Ws>("127.0.0.1:8477").await?;
-
-        // Signin as a namespace, database, or root user
-        db.signin(Root {
-            username: "root",
-            password: "root",
-        })
-            .await?;
-
-        // Select a specific namespace / database
-        db.use_ns("flashcards_gpt").use_db("flashcards").await?;
-
+        let db = TEST_DB.get_client().await?;
         let repo = UserRepo::new(db).await;
-        let users = repo.list_users().await?;
-        println!("{:?}", users);
 
-        repo.create_user(User {
+        let users = repo.list_users().await?;
+        assert!(users.is_empty());
+
+        let user = repo.create_user(User {
             id: None,
             email: "bla@bla.com".to_string().into(),
             name: "Bla".to_string().into(),
@@ -71,6 +71,14 @@ mod tests {
             time: None,
         }).await?;
 
+        assert_eq!(user.email.as_str(), "bla@bla.com");
+        assert_eq!(user.name.as_str(), "Bla");
+
+        assert!(!user.password.is_empty());
+        assert!(user.time.is_some());
+
+        let user = repo.get_user_by_id(user.id.unwrap()).await?;
+        println!("{:?}", user);
 
         Ok(())
     }
