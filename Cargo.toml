@@ -1,0 +1,11 @@
+[workspace]
+members = ["crates/*"]
+resolver = "2"
+
+[workspace.package]
+rust-version = "1.80.0"
+edition = "2021"
+
+license = "MIT"
+homepage = "https://github.com/night-crawler/flashcard_gpt"
+repository = "https://github.com/night-crawler/flashcard_gpt"
