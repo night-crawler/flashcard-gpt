@@ -1,0 +1,10 @@
+[core]
+    path = "./tests-files"
+    schema = "full"
+
+[db]
+    address = "ws://localhost:8477"
+    username = "root"
+    password = "root"
+    ns = "flashcards_gpt_dev"
+    db = "flashcards"
