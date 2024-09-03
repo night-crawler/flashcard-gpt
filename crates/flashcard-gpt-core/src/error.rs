@@ -7,8 +7,8 @@ use testcontainers::TestcontainersError;
 pub enum CoreError {
     #[error("Query failed: {0:?}")]
     DbError(#[from] surrealdb::Error),
-    #[error("Failed to create user: {0:?}")]
-    CreateUserError(Arc<String>),
+    #[error("Failed to create {0}: {1}")]
+    CreateError(&'static str, Arc<String>),
 
     #[cfg(test)]
     #[error("Failed to start test container: {0}")]
@@ -19,4 +19,7 @@ pub enum CoreError {
 
     #[error("Mutex is poisoned: {0}")]
     MutexPoisoned(String),
+
+    #[error("Tracing error: {0}")]
+    TracingError(#[from] tracing_subscriber::filter::ParseError)
 }

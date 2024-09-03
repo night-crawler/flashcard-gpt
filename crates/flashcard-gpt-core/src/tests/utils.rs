@@ -1,5 +1,9 @@
+use crate::dto::user::User;
 use crate::error::CoreError;
+use crate::ext::mutex::MutexExt;
+use crate::repo::user::UserRepo;
 use crate::tests::surreal_test_container::{SurrealDbTestContainer, SURREALDB_PORT};
+use crate::tests::TEST_DB;
 use log::info;
 use std::sync::Mutex;
 use surrealdb::engine::remote::ws::{Client, Ws};
@@ -7,7 +11,6 @@ use surrealdb::opt::auth::Root;
 use surrealdb::Surreal;
 use testcontainers::runners::AsyncRunner;
 use testcontainers::ContainerAsync;
-use crate::ext::mutex::MutexExt;
 
 #[derive(Default)]
 pub struct TestDb {
@@ -70,4 +73,20 @@ pub async fn prepare_database() -> Result<(ContainerAsync<SurrealDbTestContainer
     info!("Migration complete");
 
     Ok((node, db))
+}
+
+
+pub async fn create_user(name: &str) -> Result<User, CoreError> {
+    let db = TEST_DB.get_client().await?;
+    let repo = UserRepo::new(db).await;
+
+    let user = repo.create_user(User {
+        id: None,
+        email: format!("{}@example.com", name.to_lowercase()).into(),
+        name: name.to_string().into(),
+        password: name.to_string().into(),
+        time: None,
+    }).await?;
+
+    Ok(user)
 }

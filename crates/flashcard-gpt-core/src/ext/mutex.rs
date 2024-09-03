@@ -1,6 +1,6 @@
 use crate::error::CoreError;
-use log::{debug, error};
 use std::sync::{Mutex, MutexGuard};
+use tracing::{debug, error};
 
 pub(crate) trait MutexExt<T> {
     fn lock_sync(&self) -> Result<MutexGuard<'_, T>, CoreError>;

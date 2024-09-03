@@ -4,12 +4,13 @@ use surrealdb::engine::remote::ws::Client;
 use surrealdb::Surreal;
 use crate::ext::record_id::RecordIdExt;
 
+#[derive(Debug, Clone)]
 pub struct UserRepo {
     db: Surreal<Client>,
 }
 
 impl UserRepo {
-    pub async fn new(db: Surreal<Client>) -> Self {
+    pub fn new(db: Surreal<Client>) -> Self {
         Self { db }
     }
 
@@ -34,7 +35,7 @@ impl UserRepo {
             .await?;
 
         let created_user: Option<User> = response.take(0)?;
-        let created_user = created_user.ok_or(CoreError::CreateUserError(email))?;
+        let created_user = created_user.ok_or(CoreError::CreateError("user", email))?;
         Ok(created_user)
     }
 
@@ -52,8 +53,8 @@ impl UserRepo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dto::user::User;
     use crate::tests::TEST_DB;
+    use crate::tests::utils::create_user;
 
     #[tokio::test]
     async fn test_create_surrealdb_connection() -> Result<(), CoreError> {
@@ -63,15 +64,9 @@ mod tests {
         let users = repo.list_users().await?;
         assert!(users.is_empty());
 
-        let user = repo.create_user(User {
-            id: None,
-            email: "bla@bla.com".to_string().into(),
-            name: "Bla".to_string().into(),
-            password: "sample".to_string().into(),
-            time: None,
-        }).await?;
+        let user = create_user("Bla").await?;
 
-        assert_eq!(user.email.as_str(), "bla@bla.com");
+        assert_eq!(user.email.as_str(), "bla@example.com");
         assert_eq!(user.name.as_str(), "Bla");
 
         assert!(!user.password.is_empty());
