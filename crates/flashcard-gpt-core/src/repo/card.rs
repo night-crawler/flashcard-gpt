@@ -3,6 +3,7 @@ use crate::error::CoreError;
 use std::sync::Arc;
 use surrealdb::engine::remote::ws::Client;
 use surrealdb::Surreal;
+use crate::ext::response_ext::ResponseExt;
 
 #[derive(Debug, Clone)]
 pub struct CardRepo {
@@ -22,14 +23,11 @@ impl CardRepo {
         return select * from card where id=$id fetch user, tags;
         commit transaction;
         "#).bind(("card", card_dto.clone())).await?;
-
-        let errors = response.take_errors();
-        if !errors.is_empty() {
-            return Err(CoreError::CreateError("card", format!("{:?}", errors).into()));
-        }
+        
+        response.errors_or_ok()?;
 
         let card: Option<Card> = response.take(0)?;
-        let card = card.ok_or_else(|| CoreError::CreateError("card", format!("{:?}", card_dto).into()))?;
+        let card = card.ok_or_else(|| CoreError::CreateError(format!("{:?}", card_dto).into()))?;
         Ok(card)
     }
 }
@@ -41,6 +39,7 @@ mod tests {
     use crate::tests::utils::create_user;
     use crate::tests::TEST_DB;
     use std::sync::Arc;
+    use serde_json::json;
 
     #[tokio::test]
     async fn test_create() -> Result<(), CoreError> {
@@ -53,15 +52,17 @@ mod tests {
             title: Arc::new("title".to_string()),
             front: Some(Arc::new("a".to_string())),
             back: Some(Arc::new("b".to_string())),
-            data: None,
+            data: Some(json!({
+                "a": "b"
+            })),
             hints: vec![Arc::new("a".to_string())],
             difficulty: 3,
             importance: 2,
-            time: None,
             tags: Default::default(),
         };
 
         let card = repo.create(card).await?;
+        assert!(card.data.is_some());
         println!("{:?}", card);
         Ok(())
     }

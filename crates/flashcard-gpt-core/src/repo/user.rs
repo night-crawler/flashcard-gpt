@@ -35,7 +35,7 @@ impl UserRepo {
             .await?;
 
         let created_user: Option<User> = response.take(0)?;
-        let created_user = created_user.ok_or(CoreError::CreateError("user", email))?;
+        let created_user = created_user.ok_or(CoreError::CreateError(email))?;
         Ok(created_user)
     }
 
@@ -57,17 +57,17 @@ mod tests {
     use crate::tests::utils::create_user;
 
     #[tokio::test]
-    async fn test_create_surrealdb_connection() -> Result<(), CoreError> {
+    async fn test_create_user() -> Result<(), CoreError> {
         let db = TEST_DB.get_client().await?;
-        let repo = UserRepo::new(db).await;
+        let repo = UserRepo::new(db);
 
         let users = repo.list_users().await?;
         assert!(users.is_empty());
 
         let user = create_user("Bla").await?;
 
-        assert_eq!(user.email.as_str(), "bla@example.com");
-        assert_eq!(user.name.as_str(), "Bla");
+        assert_eq!(user.email.as_ref(), "bla@example.com");
+        assert_eq!(user.name.as_ref(), "Bla");
 
         assert!(!user.password.is_empty());
         assert!(user.time.is_some());

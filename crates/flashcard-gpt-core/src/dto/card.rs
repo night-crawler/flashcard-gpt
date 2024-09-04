@@ -2,6 +2,7 @@ use crate::dto::time::Time;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Arc;
+use serde_json::Value;
 use surrealdb::sql::Thing;
 use crate::dto::user::User;
 
@@ -12,7 +13,7 @@ pub struct Card {
     pub title: Arc<String>,
     // pub front: Option<Arc<String>>,
     // pub back: Option<Arc<String>>,
-    // pub data: Option<Value>,
+    pub data: Option<Value>,
     // pub hints: Vec<Arc<String>>,
     // pub difficulty: i32,
     // pub importance: i32,
@@ -31,8 +32,7 @@ pub struct CreateCardDto {
     pub difficulty: i32,
     pub importance: i32,
     // pub tags: HashSet<Arc<String>>,
-    pub time: Option<Time>,
 
-    pub data: Option<serde_json::Value>,
+    pub data: Option<Value>,
     pub tags: HashSet<Thing>,
 }

@@ -78,7 +78,7 @@ pub async fn prepare_database() -> Result<(ContainerAsync<SurrealDbTestContainer
 
 pub async fn create_user(name: &str) -> Result<User, CoreError> {
     let db = TEST_DB.get_client().await?;
-    let repo = UserRepo::new(db).await;
+    let repo = UserRepo::new(db);
 
     let user = repo.create_user(User {
         id: None,

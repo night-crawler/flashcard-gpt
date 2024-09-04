@@ -6,8 +6,8 @@ use surrealdb::sql::Thing;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
     pub id: Option<Thing>,
-    pub email: Arc<String>,
-    pub name: Arc<String>,
-    pub password: Arc<String>,
+    pub email: Arc<str>,
+    pub name: Arc<str>,
+    pub password: Arc<str>,
     pub time: Option<Time>,
 }

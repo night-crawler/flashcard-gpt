@@ -138,3 +138,19 @@ DEFINE FIELD time.created_at ON user TYPE datetime DEFAULT time::now() VALUE $be
 DEFINE FIELD time.updated_at ON user TYPE datetime DEFAULT time::now() VALUE time::now() PERMISSIONS FULL;
 
 DEFINE INDEX email ON user FIELDS email UNIQUE;
+
+-- ------------------------------
+-- TABLE: binding
+-- ------------------------------
+
+DEFINE TABLE binding TYPE ANY SCHEMAFULL PERMISSIONS FOR select, update, delete WHERE id = $auth.id, FOR create NONE;
+
+DEFINE FIELD user ON binding TYPE record<user> ASSERT $value != NONE AND $value != NULL AND fn::exists(<string> $value) PERMISSIONS FULL;
+DEFINE FIELD source_id ON binding TYPE string PERMISSIONS FULL;
+DEFINE FIELD type_name ON binding TYPE string PERMISSIONS FULL;
+DEFINE FIELD data ON binding FLEXIBLE TYPE option<object> PERMISSIONS FULL;
+
+DEFINE FIELD time ON binding TYPE object DEFAULT {  } PERMISSIONS FULL;
+DEFINE FIELD time.created_at ON binding TYPE datetime DEFAULT time::now() VALUE $before OR time::now() PERMISSIONS FULL;
+DEFINE FIELD time.updated_at ON binding TYPE datetime DEFAULT time::now() VALUE time::now() PERMISSIONS FULL;
+

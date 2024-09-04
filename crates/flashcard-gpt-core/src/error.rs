@@ -7,8 +7,8 @@ use testcontainers::TestcontainersError;
 pub enum CoreError {
     #[error("Query failed: {0:?}")]
     DbError(#[from] surrealdb::Error),
-    #[error("Failed to create {0}: {1}")]
-    CreateError(&'static str, Arc<String>),
+    #[error("Failed to create: {0}")]
+    CreateError(Arc<str>),
 
     #[cfg(test)]
     #[error("Failed to start test container: {0}")]

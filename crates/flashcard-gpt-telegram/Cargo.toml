@@ -12,3 +12,11 @@ teloxide = { version = "0.13", features = ["macros"] }
 tokio = { version = "1.8", features = ["rt-multi-thread", "macros"] }
 flashcard-gpt-core = { path = "../flashcard-gpt-core" }
 anyhow = "1"
+
+[dependencies.uuid]
+version = "1.10.0"
+features = [
+    "v4",
+    "fast-rng",
+    "macro-diagnostics",
+]
