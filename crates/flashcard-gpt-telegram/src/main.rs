@@ -7,20 +7,18 @@ pub mod db;
 pub mod ext;
 
 use crate::db::repositories::Repositories;
-use flashcard_gpt_core::dto::binding::{Binding, GetOrCreateBindingDto};
 use flashcard_gpt_core::logging::init_tracing;
 use flashcard_gpt_core::reexports::db::engine::remote::ws::{Client, Ws};
 use flashcard_gpt_core::reexports::db::opt::auth::Root;
 use flashcard_gpt_core::reexports::db::Surreal;
-use flashcard_gpt_core::reexports::trace::info;
-use flashcard_gpt_core::repo::binding::BindingRepo;
-use std::sync::Arc;
+use flashcard_gpt_core::reexports::trace::{info, span, Level};
 use teloxide::{
     dispatching::{dialogue, dialogue::InMemStorage, UpdateHandler},
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
     utils::command::BotCommands,
 };
+use crate::ext::binding::BindingExt;
 
 type MyDialogue = Dialogue<State, InMemStorage<State>>;
 
@@ -63,12 +61,12 @@ async fn main() -> anyhow::Result<()> {
 
     db.use_ns("flashcards_gpt").use_db("flashcards").await?;
 
-    let reposities = Repositories::new(db.clone());
+    let repositories = Repositories::new(db.clone(), span!(Level::INFO, "root"));
 
     let bot = Bot::from_env();
 
     Dispatcher::builder(bot, schema())
-        .dependencies(dptree::deps![InMemStorage::<State>::new(), reposities])
+        .dependencies(dptree::deps![InMemStorage::<State>::new(), repositories])
         .enable_ctrlc_handler()
         .build()
         .dispatch()
@@ -104,43 +102,9 @@ fn schema() -> UpdateHandler<anyhow::Error> {
 }
 
 
-async fn get_or_create_user(msg: &Message, repo: &BindingRepo) -> anyhow::Result<Binding> {
-    let source_id = Arc::from(if let Some(user) = &msg.from {
-        format!("user:{}", user.id)
-    } else {
-        format!("chat:{}", msg.chat.id)
-    });
-
-    let binding = repo.get_binding(Arc::clone(&source_id)).await?;
-    if let Some(binding) = binding {
-        return Ok(binding);
-    }
-
-    let (email, data, name) = if let Some(user) = &msg.from {
-        let username = user.username.clone().unwrap_or_else(|| user.id.to_string());
-        let serialized = flashcard_gpt_core::reexports::json::to_value(user)?;
-
-        (format!("user-{}@telegram-flash-gpt.example.com", username), serialized, user.full_name())
-    } else {
-        let serialized = flashcard_gpt_core::reexports::json::to_value(&msg.chat)?;
-        let name = msg.chat.title().or_else(|| msg.chat.username()).map(|name| name.to_string()).unwrap_or_else(|| msg.chat.id.to_string());
-        (format!("chat-{}telegram-flash-gpt.example.com", msg.chat.id), serialized, name)
-    };
-
-    let binding_dto = GetOrCreateBindingDto {
-        source_id,
-        name: Arc::from(name),
-        type_name: Arc::from("telegram"),
-        password: Arc::from(uuid::Uuid::new_v4().to_string()),
-        data: Some(data),
-        email: Arc::from(email),
-    };
-
-    Ok(repo.get_or_create_binding(binding_dto).await?)
-}
 
 async fn start(bot: Bot, dialogue: MyDialogue, msg: Message, repositories: Repositories) -> anyhow::Result<()> {
-    let binding = get_or_create_user(&msg, &repositories.bindings).await?;
+    let binding = repositories.bindings.get_or_create_telegram_binding(&msg).await?;
     info!(?binding, "Started a chat");
 
     bot.send_message(msg.chat.id, "Let's start! What's your full name?").await?;

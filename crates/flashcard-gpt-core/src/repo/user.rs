@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use crate::dto::user::User;
 use crate::error::CoreError;
 use surrealdb::engine::remote::ws::Client;
@@ -7,18 +8,21 @@ use crate::ext::record_id::RecordIdExt;
 #[derive(Debug, Clone)]
 pub struct UserRepo {
     db: Surreal<Client>,
+    span: tracing::Span,
 }
 
 impl UserRepo {
-    pub fn new(db: Surreal<Client>) -> Self {
-        Self { db }
+    pub fn new(db: Surreal<Client>, span: tracing::Span) -> Self {
+        Self { db, span }
     }
 
+    #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err)]
     pub async fn list_users(&self) -> Result<Vec<User>, surrealdb::Error> {
         let users: Vec<User> = self.db.select("user").await?;
         Ok(users)
     }
 
+    #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err, fields(?user))]
     pub async fn create_user(&self, user: User) -> Result<User, CoreError> {
         let query = r#"
             CREATE user CONTENT {
@@ -39,7 +43,8 @@ impl UserRepo {
         Ok(created_user)
     }
 
-    pub async fn get_user_by_id(&self, id: impl RecordIdExt) -> Result<User, CoreError> {
+    #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err, fields(id))]
+    pub async fn get_user_by_id(&self, id: impl RecordIdExt + Debug) -> Result<User, CoreError> {
         let id = id.record_id();
         let user: Option<User> = self.db.select(id.clone()).await?;
         if let Some(user) = user {
@@ -52,6 +57,7 @@ impl UserRepo {
 
 #[cfg(test)]
 mod tests {
+    use tracing::{span, Level};
     use super::*;
     use crate::tests::TEST_DB;
     use crate::tests::utils::create_user;
@@ -59,7 +65,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_user() -> Result<(), CoreError> {
         let db = TEST_DB.get_client().await?;
-        let repo = UserRepo::new(db);
+        let repo = UserRepo::new(db, span!(Level::INFO, "user_create"));
 
         let users = repo.list_users().await?;
         assert!(users.is_empty());

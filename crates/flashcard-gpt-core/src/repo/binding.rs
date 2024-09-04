@@ -8,14 +8,16 @@ use surrealdb::Surreal;
 #[derive(Debug, Clone)]
 pub struct BindingRepo {
     db: Surreal<Client>,
+    span: tracing::Span,
 }
 
 
 impl BindingRepo {
-    pub fn new(db: Surreal<Client>) -> Self {
-        Self { db }
+    pub fn new(db: Surreal<Client>, span: tracing::Span) -> Self {
+        Self { db, span }
     }
 
+    #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err, fields(source_id))]
     pub async fn get_binding(&self, source_id: Arc<str>) -> Result<Option<Binding>, CoreError> {
         let query = r#"
             select * from binding where source_id=$source_id fetch user;
@@ -27,6 +29,7 @@ impl BindingRepo {
         Ok(response.take(0)?)
     }
 
+    #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?dto))]
     pub async fn get_or_create_binding(&self, dto: GetOrCreateBindingDto) -> Result<Binding, CoreError> {
         let query = r#"
             begin transaction;
@@ -34,12 +37,15 @@ impl BindingRepo {
             if $binding {
                 return $binding[0];
             };
-            
-            $user_id = (create user content {
-                email: $dto.email,
-                name: $dto.name,
-                password: crypto::argon2::generate($dto.password)
-            } return id)[0].id;
+
+            $user_id = (select id from user where email=$dto.email)[0].id;
+            if $user_id == NONE {
+                $user_id = (create user content {
+                    email: $dto.email,
+                    name: $dto.name,
+                    password: crypto::argon2::generate($dto.password)
+                } return id)[0].id;
+            };
 
             $id = (create binding content {
                 source_id: $dto.source_id,
@@ -75,7 +81,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_or_create_binding() -> Result<(), CoreError> {
         let db = TEST_DB.get_client().await?;
-        let repo = BindingRepo::new(db);
+        let repo = BindingRepo::new(db, tracing::span!(tracing::Level::INFO, "test"));
 
         let result = repo.get_binding("source_id".into()).await?;
         assert!(result.is_none());

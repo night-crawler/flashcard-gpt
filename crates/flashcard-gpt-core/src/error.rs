@@ -21,5 +21,8 @@ pub enum CoreError {
     MutexPoisoned(String),
 
     #[error("Tracing error: {0}")]
-    TracingError(#[from] tracing_subscriber::filter::ParseError)
+    TracingError(#[from] tracing_subscriber::filter::ParseError),
+    
+    #[error("Json parse error: {0}")]
+    JsonParseError(#[from] serde_json::Error),
 }

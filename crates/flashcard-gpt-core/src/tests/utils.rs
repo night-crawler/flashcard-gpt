@@ -11,6 +11,7 @@ use surrealdb::opt::auth::Root;
 use surrealdb::Surreal;
 use testcontainers::runners::AsyncRunner;
 use testcontainers::ContainerAsync;
+use tracing::{span, Level};
 
 #[derive(Default)]
 pub struct TestDb {
@@ -78,7 +79,7 @@ pub async fn prepare_database() -> Result<(ContainerAsync<SurrealDbTestContainer
 
 pub async fn create_user(name: &str) -> Result<User, CoreError> {
     let db = TEST_DB.get_client().await?;
-    let repo = UserRepo::new(db);
+    let repo = UserRepo::new(db, span!(Level::INFO, "user_create"));
 
     let user = repo.create_user(User {
         id: None,

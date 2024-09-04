@@ -1,3 +1,4 @@
+use flashcard_gpt_core::reexports;
 use flashcard_gpt_core::reexports::db::engine::remote::ws::Client;
 use flashcard_gpt_core::reexports::db::Surreal;
 use flashcard_gpt_core::repo::binding::BindingRepo;
@@ -12,11 +13,11 @@ pub struct Repositories {
 }
 
 impl Repositories {
-    pub fn new(db: Surreal<Client>) -> Self {
+    pub fn new(db: Surreal<Client>, span: reexports::trace::Span) -> Self {
         Self {
-            users: UserRepo::new(db.clone()),
-            cards: CardRepo::new(db.clone()),
-            bindings: BindingRepo::new(db),
+            users: UserRepo::new(db.clone(), span.clone()),
+            cards: CardRepo::new(db.clone(), span.clone()),
+            bindings: BindingRepo::new(db, span),
         }
     }
 }
