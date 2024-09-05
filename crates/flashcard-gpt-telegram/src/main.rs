@@ -6,44 +6,27 @@
 pub mod command;
 pub mod db;
 pub mod ext;
+pub mod state;
 
-use crate::command::{DeckCommand, RootCommand};
+use crate::command::{CardCommand, CardGroupCommand, DeckCommand, RootCommand, UserCommand};
 use crate::db::repositories::Repositories;
 use crate::ext::binding::BindingExt;
+use crate::ext::bot::BotExt;
+use crate::ext::dialogue::DialogueExt;
+use crate::state::State;
 use flashcard_gpt_core::logging::init_tracing;
 use flashcard_gpt_core::reexports::db::engine::remote::ws::{Client, Ws};
 use flashcard_gpt_core::reexports::db::opt::auth::Root;
 use flashcard_gpt_core::reexports::db::Surreal;
 use flashcard_gpt_core::reexports::trace::{info, span, Level};
-use strum::IntoEnumIterator;
-use strum_macros::{AsRefStr, EnumIter};
+use std::str::FromStr;
 use teloxide::{
     dispatching::{dialogue, dialogue::InMemStorage, UpdateHandler},
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
-    utils::command::BotCommands,
 };
 
-type MyDialogue = Dialogue<State, InMemStorage<State>>;
-
-#[derive(Clone, Default, Debug)]
-pub enum State {
-    #[default]
-    Start,
-
-    InsideRootMenu,
-    InsideUserMenu,
-    InsideDeckMenu,
-    InsideCardMenu,
-    InsideCardGroupMenu,
-
-    ReceiveFullName,
-    ReceiveProductChoice {
-        full_name: String,
-    },
-
-    ReceiveDeckMenuItem,
-}
+type FlashGptDialogue = Dialogue<State, InMemStorage<State>>;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -81,9 +64,13 @@ fn schema() -> UpdateHandler<anyhow::Error> {
 
     let command_handler = teloxide::filter_command::<RootCommand, _>()
         .branch(
-            case![State::Start]
-                .branch(case![RootCommand::Help].endpoint(help))
-                .branch(case![RootCommand::Start].endpoint(start)),
+            case![State::InsideRootMenu]
+                .branch(case![RootCommand::Help].endpoint(root_help))
+                .branch(case![RootCommand::Start].endpoint(start))
+                .branch(case![RootCommand::Deck].endpoint(handle_show_deck_menu))
+                .branch(case![RootCommand::User].endpoint(handle_show_user_menu))
+                .branch(case![RootCommand::Card].endpoint(handle_show_card_menu))
+                .branch(case![RootCommand::CardGroup].endpoint(handle_show_card_group_menu)),
         )
         .branch(case![RootCommand::Cancel].endpoint(cancel));
 
@@ -97,9 +84,34 @@ fn schema() -> UpdateHandler<anyhow::Error> {
         .branch(root_menu_handler)
 }
 
+async fn handle_show_deck_menu(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
+    bot.send_menu::<DeckCommand>(dialogue.chat_id()).await?;
+    dialogue.set_menu_state::<DeckCommand>().await?;
+    Ok(())
+}
+
+async fn handle_show_user_menu(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
+    bot.send_menu::<UserCommand>(dialogue.chat_id()).await?;
+    dialogue.set_menu_state::<UserCommand>().await?;
+    Ok(())
+}
+
+async fn handle_show_card_menu(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
+    bot.send_menu::<CardCommand>(dialogue.chat_id()).await?;
+    dialogue.set_menu_state::<CardCommand>().await?;
+    Ok(())
+}
+
+async fn handle_show_card_group_menu(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
+    bot.send_menu::<CardGroupCommand>(dialogue.chat_id())
+        .await?;
+    dialogue.set_menu_state::<CardGroupCommand>().await?;
+    Ok(())
+}
+
 async fn start(
     bot: Bot,
-    dialogue: MyDialogue,
+    dialogue: FlashGptDialogue,
     msg: Message,
     repositories: Repositories,
 ) -> anyhow::Result<()> {
@@ -107,31 +119,25 @@ async fn start(
         .bindings
         .get_or_create_telegram_binding(&msg)
         .await?;
-    let menu_items =
-        RootCommand::iter().map(|cmd| InlineKeyboardButton::callback(cmd.as_ref(), cmd.as_ref()));
-
-    bot.send_message(msg.chat.id, "Root menu:")
-        .reply_markup(InlineKeyboardMarkup::new([menu_items]))
-        .await?;
-
+    bot.delete_message(msg.chat.id, msg.id).await?;
+    bot.send_menu::<RootCommand>(dialogue.chat_id()).await?;
     dialogue.update(State::InsideRootMenu).await?;
     Ok(())
 }
 
-async fn help(bot: Bot, msg: Message) -> anyhow::Result<()> {
-    bot.send_message(msg.chat.id, RootCommand::descriptions().to_string())
-        .await?;
+async fn root_help(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
+    bot.send_help::<RootCommand>(dialogue.chat_id()).await?;
     Ok(())
 }
 
-async fn cancel(bot: Bot, dialogue: MyDialogue, msg: Message) -> anyhow::Result<()> {
-    bot.send_message(msg.chat.id, "Cancelling the dialogue.")
+async fn cancel(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
+    bot.send_message(dialogue.chat_id(), "Cancelling the dialogue.")
         .await?;
     dialogue.exit().await?;
     Ok(())
 }
 
-async fn invalid_state(bot: Bot, dialogue: MyDialogue, msg: Message) -> anyhow::Result<()> {
+async fn invalid_state(bot: Bot, dialogue: FlashGptDialogue, msg: Message) -> anyhow::Result<()> {
     bot.send_message(
         msg.chat.id,
         format!(
@@ -143,7 +149,11 @@ async fn invalid_state(bot: Bot, dialogue: MyDialogue, msg: Message) -> anyhow::
     Ok(())
 }
 
-async fn receive_full_name(bot: Bot, dialogue: MyDialogue, msg: Message) -> anyhow::Result<()> {
+async fn receive_full_name(
+    bot: Bot,
+    dialogue: FlashGptDialogue,
+    msg: Message,
+) -> anyhow::Result<()> {
     match msg.text().map(ToOwned::to_owned) {
         Some(full_name) => {
             let products = ["Apple", "Banana", "Orange", "Potato"]
@@ -167,7 +177,7 @@ async fn receive_full_name(bot: Bot, dialogue: MyDialogue, msg: Message) -> anyh
 
 async fn receive_root_menu_item(
     bot: Bot,
-    dialogue: MyDialogue,
+    dialogue: FlashGptDialogue,
     callback_query: CallbackQuery,
 ) -> anyhow::Result<()> {
     let state = dialogue.get().await?;
@@ -177,7 +187,7 @@ async fn receive_root_menu_item(
             "Didn't receive a correct menu item, resetting the dialogue",
         )
         .await?;
-        dialogue.update(State::Start).await?;
+        dialogue.update(State::InsideRootMenu).await?;
         return Ok(());
     };
 
@@ -190,17 +200,44 @@ async fn receive_root_menu_item(
         // bot.delete_message(message.chat().id, message.id()).await?;
     }
 
+    info!(?state, menu_item, "Received a menu item");
+
     match (state, menu_item.as_str()) {
-        (None | Some(State::Start), item)
-            if RootCommand::iter()
-                .filter(|cmd| cmd.as_ref() == item)
-                .count()
-                > 0 => {}
+        (None | Some(State::InsideRootMenu), item) if let Ok(cmd) = RootCommand::from_str(item) => {
+            match cmd {
+                RootCommand::Deck => {
+                    handle_show_deck_menu(bot, dialogue).await?;
+                }
+                RootCommand::User => {
+                    handle_show_user_menu(bot, dialogue).await?;
+                }
+                RootCommand::Card => {
+                    handle_show_card_menu(bot, dialogue).await?;
+                }
+                RootCommand::CardGroup => {
+                    handle_show_card_group_menu(bot, dialogue).await?;
+                }
+                RootCommand::Help => {
+                    root_help(bot, dialogue).await?;
+                }
+                RootCommand::Cancel => {
+                    cancel(bot, dialogue).await?;
+                }
+                RootCommand::Start => {
+                    // noop
+                }
+            }
+        }
+        (Some(State::InsideDeckMenu), item) if let Ok(_cmd) = DeckCommand::from_str(item) => {
+            bot.send_message(dialogue.chat_id(), "Deck menu item")
+                .await?;
+            dialogue.update(State::InsideDeckMenu).await?;
+        }
         (_, _) => {}
     }
 
-    bot.send_message(dialogue.chat_id(), menu_item).await?;
-    dialogue.update(State::ReceiveDeckMenuItem).await?;
+    // bot.send_message(dialogue.chat_id(), menu_item).await?;
+    // dialogue.update(State::ReceiveDeckMenuItem).await?;
 
     Ok(())
 }

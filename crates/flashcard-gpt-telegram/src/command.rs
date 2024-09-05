@@ -1,14 +1,16 @@
 use strum::IntoEnumIterator;
-use strum_macros::{AsRefStr, EnumIter};
+use strum_macros::{AsRefStr, EnumIter, EnumString};
 use teloxide::macros::BotCommands;
 use teloxide::types::InlineKeyboardButton;
+use crate::state::State;
 
 pub trait CommandExt {
     fn get_menu_items() -> impl Iterator<Item = InlineKeyboardButton>;
     fn get_menu_name() -> &'static str;
+    fn get_corresponding_state() -> State;
 }
 
-#[derive(BotCommands, Clone, AsRefStr, EnumIter)]
+#[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]
 #[command(rename_rule = "lowercase")]
 pub enum RootCommand {
     /// Display this text.
@@ -27,7 +29,7 @@ pub enum RootCommand {
     CardGroup,
 }
 
-#[derive(BotCommands, Clone, AsRefStr, EnumIter)]
+#[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]
 #[command(rename_rule = "lowercase")]
 pub enum DeckCommand {
     /// Display this text
@@ -37,7 +39,7 @@ pub enum DeckCommand {
     List,
 }
 
-#[derive(BotCommands, Clone, AsRefStr, EnumIter)]
+#[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]
 #[command(rename_rule = "lowercase")]
 pub enum UserCommand {
     /// Display this text
@@ -53,7 +55,7 @@ pub enum UserCommand {
     EditPassword,
 }
 
-#[derive(BotCommands, Clone, AsRefStr, EnumIter)]
+#[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]
 #[command(rename_rule = "lowercase")]
 pub enum CardCommand {
     /// Display this text
@@ -63,7 +65,7 @@ pub enum CardCommand {
     List,
 }
 
-#[derive(BotCommands, Clone, AsRefStr, EnumIter)]
+#[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]
 #[command(rename_rule = "lowercase")]
 pub enum CardGroupCommand {
     /// Display this text
@@ -81,6 +83,10 @@ impl CommandExt for RootCommand {
     fn get_menu_name() -> &'static str {
         "Menu"
     }
+
+    fn get_corresponding_state() -> State {
+        State::InsideRootMenu
+    }
 }
 
 impl CommandExt for DeckCommand {
@@ -90,6 +96,10 @@ impl CommandExt for DeckCommand {
 
     fn get_menu_name() -> &'static str {
         "Deck Menu"
+    }
+
+    fn get_corresponding_state() -> State {
+        State::InsideDeckMenu
     }
 }
 
@@ -101,6 +111,10 @@ impl CommandExt for UserCommand {
     fn get_menu_name() -> &'static str {
         "User Menu"
     }
+
+    fn get_corresponding_state() -> State {
+        State::InsideUserMenu
+    }
 }
 
 impl CommandExt for CardCommand {
@@ -111,6 +125,10 @@ impl CommandExt for CardCommand {
     fn get_menu_name() -> &'static str {
         "Card Menu"
     }
+
+    fn get_corresponding_state() -> State {
+        State::InsideCardMenu
+    }
 }
 
 impl CommandExt for CardGroupCommand {
@@ -120,5 +138,9 @@ impl CommandExt for CardGroupCommand {
 
     fn get_menu_name() -> &'static str {
         "Card Group Menu"
+    }
+
+    fn get_corresponding_state() -> State {
+        State::InsideCardGroupMenu
     }
 }

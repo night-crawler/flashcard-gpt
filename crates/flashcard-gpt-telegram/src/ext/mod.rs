@@ -1,2 +1,3 @@
 pub mod binding;
-mod bot;
+pub mod bot;
+pub mod dialogue;
