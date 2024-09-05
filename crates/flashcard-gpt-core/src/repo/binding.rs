@@ -11,7 +11,6 @@ pub struct BindingRepo {
     span: tracing::Span,
 }
 
-
 impl BindingRepo {
     pub fn new(db: Surreal<Client>, span: tracing::Span) -> Self {
         Self { db, span }
@@ -59,9 +58,12 @@ impl BindingRepo {
 
         let source_id = dto.source_id.clone();
 
-        let mut response = self.db.query(query)
+        let mut response = self
+            .db
+            .query(query)
             .bind(("source_id", source_id.clone()))
-            .bind(("dto", dto)).await?;
+            .bind(("dto", dto))
+            .await?;
         response.errors_or_ok()?;
 
         let binding: Option<Binding> = response.take(0)?;
@@ -94,7 +96,8 @@ mod tests {
             password: "password".into(),
             data: json!({
                 "a": "b"
-            }).into(),
+            })
+            .into(),
         };
         let binding = repo.get_or_create_binding(dto).await?;
         assert_eq!(binding.source_id.as_ref(), "source_id");

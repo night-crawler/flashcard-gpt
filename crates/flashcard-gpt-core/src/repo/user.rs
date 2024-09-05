@@ -1,9 +1,9 @@
-use std::fmt::Debug;
 use crate::dto::user::User;
 use crate::error::CoreError;
+use crate::ext::record_id::RecordIdExt;
+use std::fmt::Debug;
 use surrealdb::engine::remote::ws::Client;
 use surrealdb::Surreal;
-use crate::ext::record_id::RecordIdExt;
 
 #[derive(Debug, Clone)]
 pub struct UserRepo {
@@ -34,9 +34,7 @@ impl UserRepo {
 
         let email = user.email.clone();
 
-        let mut response = self.db.query(query)
-            .bind(("user", user))
-            .await?;
+        let mut response = self.db.query(query).bind(("user", user)).await?;
 
         let created_user: Option<User> = response.take(0)?;
         let created_user = created_user.ok_or(CoreError::CreateError(email))?;
@@ -57,10 +55,10 @@ impl UserRepo {
 
 #[cfg(test)]
 mod tests {
-    use tracing::{span, Level};
     use super::*;
-    use crate::tests::TEST_DB;
     use crate::tests::utils::create_user;
+    use crate::tests::TEST_DB;
+    use tracing::{span, Level};
 
     #[tokio::test]
     async fn test_create_user() -> Result<(), CoreError> {

@@ -40,7 +40,6 @@ impl TestDb {
     }
 }
 
-
 pub async fn prepare_database() -> Result<(ContainerAsync<SurrealDbTestContainer>, Surreal<Client>), CoreError> {
     let _ = pretty_env_logger::try_init();
     let node = SurrealDbTestContainer::default().start().await?;
@@ -53,7 +52,7 @@ pub async fn prepare_database() -> Result<(ContainerAsync<SurrealDbTestContainer
         username: "root",
         password: "root",
     })
-        .await?;
+    .await?;
 
     db.use_ns("test").use_db("test").await?;
 
@@ -76,18 +75,19 @@ pub async fn prepare_database() -> Result<(ContainerAsync<SurrealDbTestContainer
     Ok((node, db))
 }
 
-
 pub async fn create_user(name: &str) -> Result<User, CoreError> {
     let db = TEST_DB.get_client().await?;
     let repo = UserRepo::new(db, span!(Level::INFO, "user_create"));
 
-    let user = repo.create_user(User {
-        id: None,
-        email: format!("{}@example.com", name.to_lowercase()).into(),
-        name: name.to_string().into(),
-        password: name.to_string().into(),
-        time: None,
-    }).await?;
+    let user = repo
+        .create_user(User {
+            id: None,
+            email: format!("{}@example.com", name.to_lowercase()).into(),
+            name: name.to_string().into(),
+            password: name.to_string().into(),
+            time: None,
+        })
+        .await?;
 
     Ok(user)
 }

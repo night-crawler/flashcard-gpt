@@ -3,48 +3,47 @@
 #![feature(array_chunks)]
 #![feature(iter_array_chunks)]
 
+pub mod command;
 pub mod db;
 pub mod ext;
 
+use crate::command::{DeckCommand, RootCommand};
 use crate::db::repositories::Repositories;
+use crate::ext::binding::BindingExt;
 use flashcard_gpt_core::logging::init_tracing;
 use flashcard_gpt_core::reexports::db::engine::remote::ws::{Client, Ws};
 use flashcard_gpt_core::reexports::db::opt::auth::Root;
 use flashcard_gpt_core::reexports::db::Surreal;
 use flashcard_gpt_core::reexports::trace::{info, span, Level};
+use strum::IntoEnumIterator;
+use strum_macros::{AsRefStr, EnumIter};
 use teloxide::{
     dispatching::{dialogue, dialogue::InMemStorage, UpdateHandler},
     prelude::*,
     types::{InlineKeyboardButton, InlineKeyboardMarkup},
     utils::command::BotCommands,
 };
-use crate::ext::binding::BindingExt;
 
 type MyDialogue = Dialogue<State, InMemStorage<State>>;
 
-
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub enum State {
     #[default]
     Start,
+
+    InsideRootMenu,
+    InsideUserMenu,
+    InsideDeckMenu,
+    InsideCardMenu,
+    InsideCardGroupMenu,
+
     ReceiveFullName,
     ReceiveProductChoice {
         full_name: String,
     },
+
+    ReceiveDeckMenuItem,
 }
-
-
-#[derive(BotCommands, Clone)]
-#[command(rename_rule = "lowercase")]
-enum Command {
-    /// Display this text.
-    Help,
-    /// Start the purchase procedure.
-    Start,
-    /// Cancel the purchase procedure.
-    Cancel,
-}
-
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -57,7 +56,7 @@ async fn main() -> anyhow::Result<()> {
         username: "root",
         password: "root",
     })
-        .await?;
+    .await?;
 
     db.use_ns("flashcards_gpt").use_db("flashcards").await?;
 
@@ -75,57 +74,72 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-
 fn schema() -> UpdateHandler<anyhow::Error> {
     use dptree::case;
 
-    let command_handler = teloxide::filter_command::<Command, _>()
+    let root_menu_handler = Update::filter_callback_query().endpoint(receive_root_menu_item);
+
+    let command_handler = teloxide::filter_command::<RootCommand, _>()
         .branch(
             case![State::Start]
-                .branch(case![Command::Help].endpoint(help))
-                .branch(case![Command::Start].endpoint(start)),
+                .branch(case![RootCommand::Help].endpoint(help))
+                .branch(case![RootCommand::Start].endpoint(start)),
         )
-        .branch(case![Command::Cancel].endpoint(cancel));
+        .branch(case![RootCommand::Cancel].endpoint(cancel));
 
     let message_handler = Update::filter_message()
         .branch(command_handler)
         .branch(case![State::ReceiveFullName].endpoint(receive_full_name))
         .branch(dptree::endpoint(invalid_state));
 
-    let callback_query_handler = Update::filter_callback_query().branch(
-        case![State::ReceiveProductChoice { full_name }].endpoint(receive_product_selection),
-    );
-
     dialogue::enter::<Update, InMemStorage<State>, State, _>()
         .branch(message_handler)
-        .branch(callback_query_handler)
+        .branch(root_menu_handler)
 }
 
+async fn start(
+    bot: Bot,
+    dialogue: MyDialogue,
+    msg: Message,
+    repositories: Repositories,
+) -> anyhow::Result<()> {
+    let _binding = repositories
+        .bindings
+        .get_or_create_telegram_binding(&msg)
+        .await?;
+    let menu_items =
+        RootCommand::iter().map(|cmd| InlineKeyboardButton::callback(cmd.as_ref(), cmd.as_ref()));
 
+    bot.send_message(msg.chat.id, "Root menu:")
+        .reply_markup(InlineKeyboardMarkup::new([menu_items]))
+        .await?;
 
-async fn start(bot: Bot, dialogue: MyDialogue, msg: Message, repositories: Repositories) -> anyhow::Result<()> {
-    let binding = repositories.bindings.get_or_create_telegram_binding(&msg).await?;
-    info!(?binding, "Started a chat");
-
-    bot.send_message(msg.chat.id, "Let's start! What's your full name?").await?;
-    dialogue.update(State::ReceiveFullName).await?;
+    dialogue.update(State::InsideRootMenu).await?;
     Ok(())
 }
 
 async fn help(bot: Bot, msg: Message) -> anyhow::Result<()> {
-    bot.send_message(msg.chat.id, Command::descriptions().to_string()).await?;
+    bot.send_message(msg.chat.id, RootCommand::descriptions().to_string())
+        .await?;
     Ok(())
 }
 
 async fn cancel(bot: Bot, dialogue: MyDialogue, msg: Message) -> anyhow::Result<()> {
-    bot.send_message(msg.chat.id, "Cancelling the dialogue.").await?;
+    bot.send_message(msg.chat.id, "Cancelling the dialogue.")
+        .await?;
     dialogue.exit().await?;
     Ok(())
 }
 
-async fn invalid_state(bot: Bot, msg: Message) -> anyhow::Result<()> {
-    bot.send_message(msg.chat.id, "Unable to handle the message. Type /help to see the usage.")
-        .await?;
+async fn invalid_state(bot: Bot, dialogue: MyDialogue, msg: Message) -> anyhow::Result<()> {
+    bot.send_message(
+        msg.chat.id,
+        format!(
+            "Unable to handle the message. Type /help to see the usage. Current state: {:?}",
+            dialogue.get().await?
+        ),
+    )
+    .await?;
     Ok(())
 }
 
@@ -138,41 +152,55 @@ async fn receive_full_name(bot: Bot, dialogue: MyDialogue, msg: Message) -> anyh
             bot.send_message(msg.chat.id, "Select a product:")
                 .reply_markup(InlineKeyboardMarkup::new([products]))
                 .await?;
-            dialogue.update(State::ReceiveProductChoice { full_name }).await?;
+            dialogue
+                .update(State::ReceiveProductChoice { full_name })
+                .await?;
         }
         None => {
-            bot.send_message(msg.chat.id, "Please, send me your full name.").await?;
+            bot.send_message(msg.chat.id, "Please, send me your full name.")
+                .await?;
         }
     }
 
     Ok(())
 }
 
-async fn receive_product_selection(
+async fn receive_root_menu_item(
     bot: Bot,
     dialogue: MyDialogue,
-    full_name: String, // Available from `State::ReceiveProductChoice`.
-    q: CallbackQuery,
+    callback_query: CallbackQuery,
 ) -> anyhow::Result<()> {
-    if let Some(product) = &q.data {
-        let text = format!("You chose: {product}");
-
-        bot.answer_callback_query(q.id).text("Processing...").await?;
-
-        if let Some(message) = q.message {
-            bot.edit_message_text(message.chat().id, message.id(), text).await?;
-        } else if let Some(id) = q.inline_message_id {
-            bot.edit_message_text_inline(id, text).await?;
-        }
-
-
+    let state = dialogue.get().await?;
+    let Some(menu_item) = &callback_query.data else {
         bot.send_message(
             dialogue.chat_id(),
-            format!("{full_name}, product '{product}' has been purchased successfully!"),
+            "Didn't receive a correct menu item, resetting the dialogue",
         )
+        .await?;
+        dialogue.update(State::Start).await?;
+        return Ok(());
+    };
+
+    if let Some(message) = callback_query.message {
+        bot.delete_message(message.chat().id, message.id()).await?;
+        // bot.edit_message_text(message.chat().id, message.id(), text).await?;
+    } else if let Some(id) = callback_query.inline_message_id {
+        bot.edit_message_text_inline(id, format!("You chose: {menu_item}"))
             .await?;
-        dialogue.exit().await?;
+        // bot.delete_message(message.chat().id, message.id()).await?;
     }
+
+    match (state, menu_item.as_str()) {
+        (None | Some(State::Start), item)
+            if RootCommand::iter()
+                .filter(|cmd| cmd.as_ref() == item)
+                .count()
+                > 0 => {}
+        (_, _) => {}
+    }
+
+    bot.send_message(dialogue.chat_id(), menu_item).await?;
+    dialogue.update(State::ReceiveDeckMenuItem).await?;
 
     Ok(())
 }

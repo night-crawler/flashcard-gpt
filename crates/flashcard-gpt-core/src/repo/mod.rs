@@ -1,3 +1,3 @@
-pub mod user;
-pub mod card;
 pub mod binding;
+pub mod card;
+pub mod user;

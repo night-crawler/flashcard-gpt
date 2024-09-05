@@ -1,8 +1,8 @@
-use std::sync::Arc;
-use serde::{Deserialize, Serialize};
-use surrealdb::sql::Thing;
 use crate::dto::time::Time;
 use crate::dto::user::User;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use surrealdb::sql::Thing;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Binding {
@@ -13,7 +13,6 @@ pub struct Binding {
     pub user: Arc<User>,
     pub time: Time,
 }
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetOrCreateBindingDto {

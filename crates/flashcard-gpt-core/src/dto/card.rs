@@ -1,10 +1,10 @@
 use crate::dto::time::Time;
+use crate::dto::user::User;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashSet;
 use std::sync::Arc;
-use serde_json::Value;
 use surrealdb::sql::Thing;
-use crate::dto::user::User;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Card {
@@ -21,7 +21,6 @@ pub struct Card {
     pub time: Option<Time>,
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateCardDto {
     pub user: Thing,
@@ -32,7 +31,6 @@ pub struct CreateCardDto {
     pub difficulty: i32,
     pub importance: i32,
     // pub tags: HashSet<Arc<String>>,
-
     pub data: Option<Value>,
     pub tags: HashSet<Thing>,
 }

@@ -10,7 +10,6 @@ const TAG: &str = "v2.0.0-beta.1";
 
 pub const SURREALDB_PORT: ContainerPort = ContainerPort::Tcp(8000);
 
-
 #[derive(Debug, Clone)]
 pub struct SurrealDbTestContainer {
     env_vars: HashMap<String, String>,
@@ -19,15 +18,13 @@ pub struct SurrealDbTestContainer {
 impl SurrealDbTestContainer {
     /// Sets the user for the SurrealDB instance.
     pub fn with_user(mut self, user: &str) -> Self {
-        self.env_vars
-            .insert("SURREAL_USER".to_owned(), user.to_owned());
+        self.env_vars.insert("SURREAL_USER".to_owned(), user.to_owned());
         self
     }
 
     /// Sets the password for the SurrealDB instance.
     pub fn with_password(mut self, password: &str) -> Self {
-        self.env_vars
-            .insert("SURREAL_PASS".to_owned(), password.to_owned());
+        self.env_vars.insert("SURREAL_PASS".to_owned(), password.to_owned());
         self
     }
 
@@ -40,8 +37,7 @@ impl SurrealDbTestContainer {
 
     /// Sets strict mode for the SurrealDB instance.
     pub fn with_strict(mut self, strict: bool) -> Self {
-        self.env_vars
-            .insert("SURREAL_STRICT".to_owned(), strict.to_string());
+        self.env_vars.insert("SURREAL_STRICT".to_owned(), strict.to_string());
         self
     }
 
@@ -79,9 +75,7 @@ impl Image for SurrealDbTestContainer {
         vec![WaitFor::message_on_stderr("Started web server on ")]
     }
 
-    fn env_vars(
-        &self,
-    ) -> impl IntoIterator<Item = (impl Into<Cow<'_, str>>, impl Into<Cow<'_, str>>)> {
+    fn env_vars(&self) -> impl IntoIterator<Item = (impl Into<Cow<'_, str>>, impl Into<Cow<'_, str>>)> {
         &self.env_vars
     }
 

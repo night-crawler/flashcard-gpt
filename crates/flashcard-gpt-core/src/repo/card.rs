@@ -19,12 +19,18 @@ impl CardRepo {
     #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err, fields(?card_dto))]
     pub async fn create(&self, card_dto: CreateCardDto) -> Result<Card, CoreError> {
         let card_dto = Arc::new(card_dto);
-        let mut response = self.db.query(r#"
+        let mut response = self
+            .db
+            .query(
+                r#"
         begin transaction;
         $id = (create card content $card return id)[0].id;
         return select * from card where id=$id fetch user, tags;
         commit transaction;
-        "#).bind(("card", card_dto.clone())).await?;
+        "#,
+            )
+            .bind(("card", card_dto.clone()))
+            .await?;
 
         response.errors_or_ok()?;
 
@@ -47,7 +53,7 @@ mod tests {
     #[tokio::test]
     async fn test_create() -> Result<(), CoreError> {
         let db = TEST_DB.get_client().await?;
-        let repo = CardRepo::new(db, span!(Level::INFO,"card_create"));
+        let repo = CardRepo::new(db, span!(Level::INFO, "card_create"));
         let user = create_user("card_create").await?;
 
         let card = CreateCardDto {

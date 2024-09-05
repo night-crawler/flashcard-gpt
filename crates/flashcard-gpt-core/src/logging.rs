@@ -1,6 +1,6 @@
-use std::net::SocketAddr;
 use crate::error::CoreError;
 use console_subscriber::{ConsoleLayer, Server, ServerAddr};
+use std::net::SocketAddr;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;

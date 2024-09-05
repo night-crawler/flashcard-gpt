@@ -1,6 +1,6 @@
-use surrealdb::{RecordId, RecordIdKey};
-use surrealdb::sql::Thing;
 use crate::dto::user::User;
+use surrealdb::sql::Thing;
+use surrealdb::{RecordId, RecordIdKey};
 
 pub trait RecordIdExt {
     fn record_id(&self) -> RecordId;

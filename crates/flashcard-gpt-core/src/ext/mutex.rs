@@ -6,10 +6,7 @@ pub(crate) trait MutexExt<T> {
     fn lock_sync(&self) -> Result<MutexGuard<'_, T>, CoreError>;
 
     #[allow(dead_code)]
-    fn locking<R>(
-        &self,
-        f: impl FnOnce(MutexGuard<'_, T>) -> Result<R, CoreError>,
-    ) -> Result<R, CoreError> {
+    fn locking<R>(&self, f: impl FnOnce(MutexGuard<'_, T>) -> Result<R, CoreError>) -> Result<R, CoreError> {
         let guard = self.lock_sync()?;
         f(guard)
     }

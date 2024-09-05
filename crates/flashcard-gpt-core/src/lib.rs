@@ -4,10 +4,10 @@
 #![feature(iter_array_chunks)]
 
 pub mod dto;
-pub mod repo;
 pub mod error;
 pub mod ext;
-#[cfg(test)]
-pub mod tests;
 pub mod logging;
 pub mod reexports;
+pub mod repo;
+#[cfg(test)]
+pub mod tests;

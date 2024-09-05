@@ -1297,6 +1297,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "flashcard-gpt-core",
+ "strum",
+ "strum_macros",
  "teloxide",
  "tokio",
  "uuid",

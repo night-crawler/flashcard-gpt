@@ -1,6 +1,5 @@
 use std::sync::Arc;
 #[cfg(test)]
-
 use testcontainers::TestcontainersError;
 
 #[derive(thiserror::Error, Debug)]
@@ -13,7 +12,7 @@ pub enum CoreError {
     #[cfg(test)]
     #[error("Failed to start test container: {0}")]
     TestContainersError(#[from] TestcontainersError),
- 
+
     #[error("Not found: {0}:{1}")]
     NotFound(&'static str, String),
 
@@ -22,7 +21,7 @@ pub enum CoreError {
 
     #[error("Tracing error: {0}")]
     TracingError(#[from] tracing_subscriber::filter::ParseError),
-    
+
     #[error("Json parse error: {0}")]
     JsonParseError(#[from] serde_json::Error),
 }
