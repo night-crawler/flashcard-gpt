@@ -37,6 +37,9 @@ pub enum DeckCommand {
 
     /// Show all decks
     List,
+    
+    /// Create a new deck
+    Create,
 }
 
 #[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]

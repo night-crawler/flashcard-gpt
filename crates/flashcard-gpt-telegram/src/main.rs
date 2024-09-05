@@ -62,11 +62,11 @@ fn schema() -> UpdateHandler<anyhow::Error> {
 
     let root_menu_handler = Update::filter_callback_query().endpoint(receive_root_menu_item);
 
-    let command_handler = teloxide::filter_command::<RootCommand, _>()
+    let root_command_handler = teloxide::filter_command::<RootCommand, _>()
         .branch(
             case![State::InsideRootMenu]
-                .branch(case![RootCommand::Help].endpoint(root_help))
-                .branch(case![RootCommand::Start].endpoint(start))
+                .branch(case![RootCommand::Help].endpoint(handle_root_help))
+                .branch(case![RootCommand::Start].endpoint(handle_start))
                 .branch(case![RootCommand::Deck].endpoint(handle_show_deck_menu))
                 .branch(case![RootCommand::User].endpoint(handle_show_user_menu))
                 .branch(case![RootCommand::Card].endpoint(handle_show_card_menu))
@@ -74,14 +74,28 @@ fn schema() -> UpdateHandler<anyhow::Error> {
         )
         .branch(case![RootCommand::Cancel].endpoint(cancel));
 
-    let message_handler = Update::filter_message()
-        .branch(command_handler)
-        .branch(case![State::ReceiveFullName].endpoint(receive_full_name))
-        .branch(dptree::endpoint(invalid_state));
+    let root_message_handler = Update::filter_message()
+        .branch(root_command_handler)
+        .branch(case![State::ReceiveFullName].endpoint(receive_full_name));
+
+    let deck_command_handler = teloxide::filter_command::<DeckCommand, _>().branch(
+        case![State::InsideDeckMenu]
+            .branch(case![DeckCommand::Create].endpoint(handle_create_deck)),
+    );
+
+    let deck_message_handler = Update::filter_message().branch(deck_command_handler);
 
     dialogue::enter::<Update, InMemStorage<State>, State, _>()
-        .branch(message_handler)
+        .branch(deck_message_handler)
+        .branch(root_message_handler)
         .branch(root_menu_handler)
+        .branch(Update::filter_message().branch(dptree::endpoint(invalid_state)))
+}
+
+async fn handle_create_deck(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
+    bot.send_message(dialogue.chat_id(), "Creating a new deck...")
+        .await?;
+    Ok(())
 }
 
 async fn handle_show_deck_menu(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
@@ -109,7 +123,7 @@ async fn handle_show_card_group_menu(bot: Bot, dialogue: FlashGptDialogue) -> an
     Ok(())
 }
 
-async fn start(
+async fn handle_start(
     bot: Bot,
     dialogue: FlashGptDialogue,
     msg: Message,
@@ -125,7 +139,7 @@ async fn start(
     Ok(())
 }
 
-async fn root_help(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
+async fn handle_root_help(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
     bot.send_help::<RootCommand>(dialogue.chat_id()).await?;
     Ok(())
 }
@@ -218,7 +232,7 @@ async fn receive_root_menu_item(
                     handle_show_card_group_menu(bot, dialogue).await?;
                 }
                 RootCommand::Help => {
-                    root_help(bot, dialogue).await?;
+                    handle_root_help(bot, dialogue).await?;
                 }
                 RootCommand::Cancel => {
                     cancel(bot, dialogue).await?;
