@@ -15,8 +15,8 @@ pub struct Repositories {
 impl Repositories {
     pub fn new(db: Surreal<Client>, span: reexports::trace::Span) -> Self {
         Self {
-            users: UserRepo::new(db.clone(), span.clone()),
-            cards: CardRepo::new(db.clone(), span.clone()),
+            users: UserRepo::new_user(db.clone(), span.clone(), true),
+            cards: CardRepo::new_card(db.clone(), span.clone(), true),
             bindings: BindingRepo::new(db, span),
         }
     }

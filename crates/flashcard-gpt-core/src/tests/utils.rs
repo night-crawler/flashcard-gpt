@@ -1,4 +1,4 @@
-use crate::dto::user::User;
+use crate::dto::user::{RegisterUserDto, User};
 use crate::error::CoreError;
 use crate::ext::mutex::MutexExt;
 use crate::repo::user::UserRepo;
@@ -77,15 +77,13 @@ pub async fn prepare_database() -> Result<(ContainerAsync<SurrealDbTestContainer
 
 pub async fn create_user(name: &str) -> Result<User, CoreError> {
     let db = TEST_DB.get_client().await?;
-    let repo = UserRepo::new(db, span!(Level::INFO, "user_create"));
+    let repo = UserRepo::new_user(db, span!(Level::INFO, "user_create"), true);
 
     let user = repo
-        .create_user(User {
-            id: None,
+        .create_user(RegisterUserDto {
             email: format!("{}@example.com", name.to_lowercase()).into(),
             name: name.to_string().into(),
             password: name.to_string().into(),
-            time: None,
         })
         .await?;
 

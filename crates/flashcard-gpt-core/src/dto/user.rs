@@ -3,11 +3,18 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use surrealdb::sql::Thing;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct User {
-    pub id: Option<Thing>,
+    pub id: Thing,
     pub email: Arc<str>,
     pub name: Arc<str>,
     pub password: Arc<str>,
     pub time: Option<Time>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RegisterUserDto {
+    pub email: Arc<str>,
+    pub name: Arc<str>,
+    pub password: Arc<str>,
 }

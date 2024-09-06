@@ -37,14 +37,12 @@ impl BindingRepo {
                 return $binding[0];
             };
 
-            $user_id = (select id from user where email=$dto.email)[0].id;
-            if $user_id == NONE {
-                $user_id = (create user content {
+            $user_id = (select id from user where email=$dto.email)[0].id ?:
+                (create user content {
                     email: $dto.email,
                     name: $dto.name,
                     password: crypto::argon2::generate($dto.password)
                 } return id)[0].id;
-            };
 
             $id = (create binding content {
                 source_id: $dto.source_id,
@@ -91,7 +89,7 @@ mod tests {
         let dto = GetOrCreateBindingDto {
             source_id: "source_id".into(),
             type_name: "sample".into(),
-            email: "email@email.com".into(),
+            email: "qemail@email.com".into(),
             name: "name".into(),
             password: "password".into(),
             data: json!({
@@ -101,8 +99,6 @@ mod tests {
         };
         let binding = repo.get_or_create_binding(dto).await?;
         assert_eq!(binding.source_id.as_ref(), "source_id");
-
-        println!("{:?}", binding);
 
         Ok(())
     }

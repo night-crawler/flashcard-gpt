@@ -58,7 +58,7 @@ DEFINE TABLE deck TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select, create, update,
 DEFINE FIELD description ON deck TYPE option<string> PERMISSIONS FULL;
 DEFINE FIELD parent ON deck TYPE option<record<deck>> ASSERT $value == NONE OR $value == NULL OR fn::exists(<string> $value) PERMISSIONS FULL;
 DEFINE FIELD settings ON deck FLEXIBLE TYPE option<object> DEFAULT {  } PERMISSIONS FULL;
-DEFINE FIELD settings.daily_limit ON deck TYPE int PERMISSIONS FULL;
+DEFINE FIELD settings.daily_limit ON deck TYPE int DEFAULT 0 PERMISSIONS FULL;
 DEFINE FIELD tags ON deck TYPE set<record<tag>> DEFAULT [] PERMISSIONS FULL;
 DEFINE FIELD time ON deck TYPE object DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON deck TYPE datetime DEFAULT time::now() VALUE $before OR time::now() PERMISSIONS FULL;
@@ -123,6 +123,10 @@ DEFINE TABLE tag TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select, create, update, 
 DEFINE FIELD name ON tag TYPE string ASSERT $value != NONE AND $value != NULL PERMISSIONS FULL;
 DEFINE FIELD slug ON tag TYPE string ASSERT $value != NONE AND $value != NULL PERMISSIONS FULL;
 DEFINE FIELD user ON tag TYPE record<user> ASSERT $value != NONE AND $value != NULL AND fn::exists(<string> $value) PERMISSIONS FULL;
+
+DEFINE FIELD time ON tag TYPE object DEFAULT {  } PERMISSIONS FULL;
+DEFINE FIELD time.created_at ON tag TYPE datetime DEFAULT time::now() VALUE $before OR time::now() PERMISSIONS FULL;
+DEFINE FIELD time.updated_at ON tag TYPE datetime DEFAULT time::now() VALUE time::now() PERMISSIONS FULL;
 
 -- ------------------------------
 -- TABLE: user

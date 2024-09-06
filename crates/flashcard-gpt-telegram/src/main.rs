@@ -92,7 +92,8 @@ fn schema() -> UpdateHandler<anyhow::Error> {
         .branch(Update::filter_message().branch(dptree::endpoint(invalid_state)))
 }
 
-async fn handle_create_deck(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
+async fn handle_create_deck(bot: Bot, dialogue: FlashGptDialogue, repositories: Repositories) -> anyhow::Result<()> {
+    // repositories.
     bot.send_message(dialogue.chat_id(), "Creating a new deck...")
         .await?;
     Ok(())

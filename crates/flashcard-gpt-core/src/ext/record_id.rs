@@ -8,7 +8,7 @@ pub trait RecordIdExt {
 
 impl RecordIdExt for User {
     fn record_id(&self) -> RecordId {
-        self.id.clone().unwrap().record_id()
+        self.id.clone().record_id()
     }
 }
 

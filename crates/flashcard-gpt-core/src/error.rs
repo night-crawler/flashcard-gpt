@@ -13,8 +13,8 @@ pub enum CoreError {
     #[error("Failed to start test container: {0}")]
     TestContainersError(#[from] TestcontainersError),
 
-    #[error("Not found: {0}:{1}")]
-    NotFound(&'static str, String),
+    #[error("Not found: {0}")]
+    NotFound(Arc<str>),
 
     #[error("Mutex is poisoned: {0}")]
     MutexPoisoned(String),

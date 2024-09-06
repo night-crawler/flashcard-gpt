@@ -1,21 +1,15 @@
-use crate::dto::user::User;
+use crate::dto::user::{RegisterUserDto, User};
 use crate::error::CoreError;
-use crate::ext::record_id::RecordIdExt;
-use std::fmt::Debug;
+use crate::repo::generic_repo::GenericRepo;
 use surrealdb::engine::remote::ws::Client;
 use surrealdb::Surreal;
 
-#[derive(Debug, Clone)]
-pub struct UserRepo {
-    db: Surreal<Client>,
-    span: tracing::Span,
-}
+pub type UserRepo = GenericRepo<RegisterUserDto, User, ()>;
 
 impl UserRepo {
-    pub fn new(db: Surreal<Client>, span: tracing::Span) -> Self {
-        Self { db, span }
+    pub fn new_user(db: Surreal<Client>, span: tracing::Span, enable_transactions: bool) -> Self {
+        Self::new(db, span, "user", "", enable_transactions)
     }
-
     #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err)]
     pub async fn list_users(&self) -> Result<Vec<User>, surrealdb::Error> {
         let users: Vec<User> = self.db.select("user").await?;
@@ -23,7 +17,7 @@ impl UserRepo {
     }
 
     #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err, fields(?user))]
-    pub async fn create_user(&self, user: User) -> Result<User, CoreError> {
+    pub async fn create_user(&self, user: RegisterUserDto) -> Result<User, CoreError> {
         let query = r#"
             CREATE user CONTENT {
                 name: $user.name,
@@ -40,17 +34,6 @@ impl UserRepo {
         let created_user = created_user.ok_or(CoreError::CreateError(email))?;
         Ok(created_user)
     }
-
-    #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err, fields(id))]
-    pub async fn get_user_by_id(&self, id: impl RecordIdExt + Debug) -> Result<User, CoreError> {
-        let id = id.record_id();
-        let user: Option<User> = self.db.select(id.clone()).await?;
-        if let Some(user) = user {
-            Ok(user)
-        } else {
-            Err(CoreError::NotFound("user", id.to_string()))
-        }
-    }
 }
 
 #[cfg(test)]
@@ -63,7 +46,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_user() -> Result<(), CoreError> {
         let db = TEST_DB.get_client().await?;
-        let repo = UserRepo::new(db, span!(Level::INFO, "user_create"));
+        let repo = UserRepo::new_user(db, span!(Level::INFO, "user_create"), true);
 
         let users = repo.list_users().await?;
         assert!(users.is_empty());
@@ -76,7 +59,7 @@ mod tests {
         assert!(!user.password.is_empty());
         assert!(user.time.is_some());
 
-        let user = repo.get_user_by_id(user.id.unwrap()).await?;
+        let user = repo.get_by_id(user.id).await?;
         println!("{:?}", user);
 
         Ok(())
