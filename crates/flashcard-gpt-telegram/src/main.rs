@@ -8,7 +8,9 @@ pub mod db;
 pub mod ext;
 pub mod state;
 
-use crate::command::{CardCommand, CardGroupCommand, DeckCommand, RootCommand, UserCommand};
+use crate::command::{
+    CardCommand, CardGroupCommand, DeckCommand, RootCommand, TagCommand, UserCommand,
+};
 use crate::db::repositories::Repositories;
 use crate::ext::binding::BindingExt;
 use crate::ext::bot::BotExt;
@@ -70,6 +72,7 @@ fn schema() -> UpdateHandler<anyhow::Error> {
                 .branch(case![RootCommand::Deck].endpoint(handle_show_deck_menu))
                 .branch(case![RootCommand::User].endpoint(handle_show_user_menu))
                 .branch(case![RootCommand::Card].endpoint(handle_show_card_menu))
+                .branch(case![RootCommand::Tag].endpoint(handle_show_card_menu))
                 .branch(case![RootCommand::CardGroup].endpoint(handle_show_card_group_menu)),
         )
         .branch(case![RootCommand::Cancel].endpoint(cancel));
@@ -92,7 +95,11 @@ fn schema() -> UpdateHandler<anyhow::Error> {
         .branch(Update::filter_message().branch(dptree::endpoint(invalid_state)))
 }
 
-async fn handle_create_deck(bot: Bot, dialogue: FlashGptDialogue, repositories: Repositories) -> anyhow::Result<()> {
+async fn handle_create_deck(
+    bot: Bot,
+    dialogue: FlashGptDialogue,
+    repositories: Repositories,
+) -> anyhow::Result<()> {
     // repositories.
     bot.send_message(dialogue.chat_id(), "Creating a new deck...")
         .await?;
@@ -111,6 +118,11 @@ async fn handle_show_user_menu(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::
     Ok(())
 }
 
+async fn handle_show_tag_menu(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
+    bot.send_menu::<TagCommand>(dialogue.chat_id()).await?;
+    dialogue.set_menu_state::<TagCommand>().await?;
+    Ok(())
+}
 async fn handle_show_card_menu(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
     bot.send_menu::<CardCommand>(dialogue.chat_id()).await?;
     dialogue.set_menu_state::<CardCommand>().await?;
@@ -231,6 +243,9 @@ async fn receive_root_menu_item(
                 }
                 RootCommand::CardGroup => {
                     handle_show_card_group_menu(bot, dialogue).await?;
+                }
+                RootCommand::Tag => {
+                    handle_show_tag_menu(bot, dialogue).await?;
                 }
                 RootCommand::Help => {
                     handle_root_help(bot, dialogue).await?;

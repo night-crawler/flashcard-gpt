@@ -7,7 +7,10 @@ use tracing_subscriber::EnvFilter;
 
 pub fn init_tracing() -> Result<(), CoreError> {
     let addr = ServerAddr::Tcp(SocketAddr::new(Server::DEFAULT_IP, 6660));
-    let console_layer = ConsoleLayer::builder().with_default_env().server_addr(addr).spawn();
+    let console_layer = ConsoleLayer::builder()
+        .with_default_env()
+        .server_addr(addr)
+        .spawn();
     let fmt_layer = tracing_subscriber::fmt::layer()
         .compact()
         .with_ansi(atty::is(atty::Stream::Stdout))

@@ -1,12 +1,20 @@
-use std::sync::Arc;
-use serde::{Deserialize, Serialize};
 use crate::dto::time::Time;
-use crate::dto::user::User;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use surrealdb::sql::Thing;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub struct Tag {
+pub struct TagDto {
+    pub id: Thing,
     pub name: Arc<str>,
     pub slug: Arc<str>,
-    pub user: User,
+    pub user: Thing,
     pub time: Time,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub struct CreateTagDto {
+    pub name: Arc<str>,
+    pub slug: Arc<str>,
+    pub user: Thing,
 }

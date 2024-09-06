@@ -15,29 +15,40 @@ impl DeckRepo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::error::CoreError;
+    use crate::dto::deck::Settings;
+    use crate::dto::tag::CreateTagDto;
+    use crate::repo::tag::TagRepo;
     use crate::tests::utils::create_user;
     use crate::tests::TEST_DB;
     use std::sync::Arc;
+    use testresult::TestResult;
     use tracing::{span, Level};
 
     #[tokio::test]
-    async fn test_create() -> Result<(), CoreError> {
+    async fn test_create() -> TestResult {
         let db = TEST_DB.get_client().await?;
-        let repo = DeckRepo::new_deck(db, span!(Level::INFO, "deck_create"), false);
+        let repo = DeckRepo::new_deck(db.clone(), span!(Level::INFO, "deck_create"), false);
         let user = create_user("deck_create").await?;
+
+        let tag = TagRepo::new_tag(db, span!(Level::INFO, "tag_create"), false)
+            .create(CreateTagDto {
+                name: Arc::from("name"),
+                slug: Arc::from("slug"),
+                user: user.id.clone(),
+            })
+            .await?;
 
         let deck = CreateDeckDto {
             description: Some(Arc::from("description")),
             parent: None,
             user: user.id,
             title: Arc::from("title"),
-            tags: Default::default(),
-            settings: None,
+            tags: vec![tag.id],
+            settings: Some(Settings { daily_limit: 200 }),
         };
 
-        let card = repo.create(deck).await?;
-        println!("{:?}", card);
+        let deck = repo.create(deck).await?;
+        println!("{:?}", deck);
         Ok(())
     }
 }

@@ -6,6 +6,7 @@ pub enum State {
     InsideDeckMenu,
     InsideCardMenu,
     InsideCardGroupMenu,
+    InsideTagMenu,
 
     ReceiveFullName,
     ReceiveProductChoice {

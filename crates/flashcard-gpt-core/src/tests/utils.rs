@@ -40,7 +40,8 @@ impl TestDb {
     }
 }
 
-pub async fn prepare_database() -> Result<(ContainerAsync<SurrealDbTestContainer>, Surreal<Client>), CoreError> {
+pub async fn prepare_database(
+) -> Result<(ContainerAsync<SurrealDbTestContainer>, Surreal<Client>), CoreError> {
     let _ = pretty_env_logger::try_init();
     let node = SurrealDbTestContainer::default().start().await?;
     let host_port = node.get_host_port_ipv4(SURREALDB_PORT).await?;
@@ -56,7 +57,8 @@ pub async fn prepare_database() -> Result<(ContainerAsync<SurrealDbTestContainer
 
     db.use_ns("test").use_db("test").await?;
 
-    let migration_data = include_str!("../../db-migrations/migrations/20240902_185441_Initial.surql");
+    let migration_data =
+        include_str!("../../db-migrations/migrations/20240902_185441_Initial.surql");
     let mut response = db.query(migration_data).await?;
 
     let mut last_error = None;

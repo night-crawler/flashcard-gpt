@@ -1,4 +1,4 @@
-use flashcard_gpt_core::dto::binding::{Binding, GetOrCreateBindingDto};
+use flashcard_gpt_core::dto::binding::{BindingDto, GetOrCreateBindingDto};
 use flashcard_gpt_core::error::CoreError;
 use flashcard_gpt_core::repo::binding::BindingRepo;
 use std::future::Future;
@@ -6,18 +6,21 @@ use std::sync::Arc;
 use teloxide::prelude::*;
 
 pub trait BindingExt {
-    fn get_or_create_telegram_binding(&self, msg: &Message) -> impl Future<Output = Result<Binding, CoreError>>;
+    fn get_or_create_telegram_binding(
+        &self,
+        msg: &Message,
+    ) -> impl Future<Output = Result<BindingDto, CoreError>>;
 }
 
 impl BindingExt for BindingRepo {
-    async fn get_or_create_telegram_binding(&self, msg: &Message) -> Result<Binding, CoreError> {
+    async fn get_or_create_telegram_binding(&self, msg: &Message) -> Result<BindingDto, CoreError> {
         let source_id = Arc::from(if let Some(user) = &msg.from {
             format!("user:{}", user.id)
         } else {
             format!("chat:{}", msg.chat.id)
         });
 
-        let binding = self.get_binding(Arc::clone(&source_id)).await?;
+        let binding = self.get_by_source_id(Arc::clone(&source_id)).await?;
         if let Some(binding) = binding {
             return Ok(binding);
         }

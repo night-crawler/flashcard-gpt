@@ -17,7 +17,7 @@ impl Repositories {
         Self {
             users: UserRepo::new_user(db.clone(), span.clone(), true),
             cards: CardRepo::new_card(db.clone(), span.clone(), true),
-            bindings: BindingRepo::new(db, span),
+            bindings: BindingRepo::new_binding(db, span, true),
         }
     }
 }

@@ -1275,7 +1275,6 @@ checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
 name = "flashcard-gpt-core"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "atty",
  "chrono",
  "chrono-tz",
@@ -1289,6 +1288,7 @@ dependencies = [
  "serde_json",
  "surrealdb-beta",
  "testcontainers",
+ "testresult",
  "thiserror",
  "tokio",
  "tracing",
@@ -4477,6 +4477,12 @@ dependencies = [
  "tokio-util",
  "url",
 ]
+
+[[package]]
+name = "testresult"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "614b328ff036a4ef882c61570f72918f7e9c5bee1da33f8e7f91e01daee7e56c"
 
 [[package]]
 name = "thiserror"

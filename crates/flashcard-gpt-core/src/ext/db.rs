@@ -50,12 +50,17 @@ impl DbExt for Surreal<Client> {
         } else {
             ""
         };
+        let fetch = if fetch.is_empty() {
+            String::new()
+        } else {
+            format!("fetch {}", fetch)
+        };
         let mut response = self
             .query(format!(
                 r#"
                 {begin};
                 $id = (create type::table($table) content $dto return id)[0].id;
-                return select * from type::table($table) where id=$id fetch {fetch};
+                return select * from type::table($table) where id=$id {fetch};
                 {commit};
             "#
             ))

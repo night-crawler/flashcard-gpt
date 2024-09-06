@@ -1,23 +1,23 @@
-use crate::dto::binding::{Binding, GetOrCreateBindingDto};
+use crate::dto::binding::{BindingDto, GetOrCreateBindingDto};
 use crate::error::CoreError;
 use crate::ext::response_ext::ResponseExt;
+use crate::repo::generic_repo::GenericRepo;
 use std::sync::Arc;
 use surrealdb::engine::remote::ws::Client;
 use surrealdb::Surreal;
+use tracing::Span;
 
-#[derive(Debug, Clone)]
-pub struct BindingRepo {
-    db: Surreal<Client>,
-    span: tracing::Span,
-}
-
+pub type BindingRepo = GenericRepo<GetOrCreateBindingDto, BindingDto, ()>;
 impl BindingRepo {
-    pub fn new(db: Surreal<Client>, span: tracing::Span) -> Self {
-        Self { db, span }
+    pub fn new_binding(db: Surreal<Client>, span: Span, enable_transactions: bool) -> Self {
+        Self::new(db, span, "binding", "user", enable_transactions)
     }
 
     #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err, fields(source_id))]
-    pub async fn get_binding(&self, source_id: Arc<str>) -> Result<Option<Binding>, CoreError> {
+    pub async fn get_by_source_id(
+        &self,
+        source_id: Arc<str>,
+    ) -> Result<Option<BindingDto>, CoreError> {
         let query = r#"
             select * from binding where source_id=$source_id fetch user;
         "#;
@@ -29,7 +29,10 @@ impl BindingRepo {
     }
 
     #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?dto))]
-    pub async fn get_or_create_binding(&self, dto: GetOrCreateBindingDto) -> Result<Binding, CoreError> {
+    pub async fn get_or_create_binding(
+        &self,
+        dto: GetOrCreateBindingDto,
+    ) -> Result<BindingDto, CoreError> {
         let query = r#"
             begin transaction;
             $binding = select * from binding where source_id=$source_id fetch user;
@@ -64,7 +67,7 @@ impl BindingRepo {
             .await?;
         response.errors_or_ok()?;
 
-        let binding: Option<Binding> = response.take(0)?;
+        let binding: Option<BindingDto> = response.take(0)?;
         let binding = binding.ok_or(CoreError::CreateError(source_id))?;
 
         Ok(binding)
@@ -81,9 +84,9 @@ mod tests {
     #[tokio::test]
     async fn test_get_or_create_binding() -> Result<(), CoreError> {
         let db = TEST_DB.get_client().await?;
-        let repo = BindingRepo::new(db, tracing::span!(tracing::Level::INFO, "test"));
+        let repo = BindingRepo::new_binding(db, tracing::span!(tracing::Level::INFO, "test"), true);
 
-        let result = repo.get_binding("source_id".into()).await?;
+        let result = repo.get_by_source_id("source_id".into()).await?;
         assert!(result.is_none());
 
         let dto = GetOrCreateBindingDto {

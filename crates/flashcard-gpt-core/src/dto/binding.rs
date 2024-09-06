@@ -5,7 +5,7 @@ use std::sync::Arc;
 use surrealdb::sql::Thing;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Binding {
+pub struct BindingDto {
     pub id: Thing,
     pub source_id: Arc<str>,
     pub type_name: Arc<str>,

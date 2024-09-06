@@ -67,9 +67,10 @@ mod tests {
     use super::*;
     use serde_json;
     use std::sync::Arc;
+    use testresult::TestResult;
 
     #[test]
-    fn test_serialize() -> anyhow::Result<()> {
+    fn test_serialize() -> TestResult {
         let durations = vec![
             [Duration::minutes(30), Duration::hours(1)],
             [Duration::minutes(2), Duration::hours(3)],

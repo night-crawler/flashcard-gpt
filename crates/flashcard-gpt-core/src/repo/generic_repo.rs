@@ -3,7 +3,6 @@ use crate::ext::db::DbExt;
 use crate::ext::record_id::RecordIdExt;
 use std::fmt::Debug;
 use surrealdb::engine::remote::ws::Client;
-use surrealdb::sql::Field;
 use surrealdb::Surreal;
 use tracing::{Instrument, Span};
 
