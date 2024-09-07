@@ -158,6 +158,18 @@ pub(super) async fn receive_root_menu_item(
                 .update(State::ReceiveDeckTags { title, tags })
                 .await?;
         }
+        (Some(State::ReceiveDeckParent { title, tags, description }), parent) => {
+            bot.send_message(dialogue.chat_id(), "Deck settings / daily limit:")
+                .await?;
+            dialogue
+                .update(State::ReceiveDeckSettings {
+                    title,
+                    tags,
+                    description,
+                    parent: Some(parent.to_owned()),
+                })
+                .await?;
+        }
         (_, _) => {}
     }
 

@@ -38,17 +38,33 @@ mod tests {
             })
             .await?;
 
-        let deck = CreateDeckDto {
-            description: Some(Arc::from("description")),
-            parent: None,
-            user: user.id,
-            title: Arc::from("title"),
-            tags: vec![tag.id],
-            settings: Some(Settings { daily_limit: 200 }),
-        };
+        let deck = repo
+            .create(CreateDeckDto {
+                description: Some(Arc::from("description")),
+                parent: None,
+                user: user.id.clone(),
+                title: Arc::from("title"),
+                tags: vec![tag.id.clone()],
+                settings: None,
+            })
+            .await?;
 
-        let deck = repo.create(deck).await?;
-        println!("{:?}", deck);
+        assert_eq!(deck.description.as_deref(), Some("description"));
+        assert!(deck.parent.is_none());
+
+        let deck2 = repo
+            .create(CreateDeckDto {
+                description: Some(Arc::from("description2")),
+                parent: Some(deck.id.clone()),
+                user: user.id,
+                title: Arc::from("title2"),
+                tags: vec![tag.id.clone()],
+                settings: Some(Settings { daily_limit: 200 }),
+            })
+            .await?;
+
+        assert_eq!(deck2.parent.as_ref().unwrap(), &deck.id);
+
         Ok(())
     }
 }

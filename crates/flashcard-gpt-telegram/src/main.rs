@@ -59,38 +59,3 @@ async fn invalid_state(bot: Bot, dialogue: FlashGptDialogue, msg: Message) -> an
     .await?;
     Ok(())
 }
-
-async fn receive_deck_continue(
-    bot: Bot,
-    dialogue: FlashGptDialogue,
-    msg: Message,
-) -> anyhow::Result<()> {
-    let Some(state) = dialogue.get().await? else {
-        bot.send_message(
-            msg.chat.id,
-            "No state found, resetting the dialogue to the root menu.",
-        )
-        .await?;
-        dialogue.update(State::InsideRootMenu).await?;
-        return Ok(());
-    };
-
-    match state {
-        State::InsideRootMenu => {}
-        State::InsideUserMenu => {}
-        State::InsideDeckMenu => {}
-        State::InsideCardMenu => {}
-        State::InsideCardGroupMenu => {}
-        State::InsideTagMenu => {}
-        State::ReceiveDeckTitle => {}
-        State::ReceiveDeckTags { tags, title } => {
-            bot.send_message(msg.chat.id, "Deck description:").await?;
-            dialogue
-                .update(State::ReceiveDeckDescription { title, tags })
-                .await?;
-        }
-        State::ReceiveDeckDescription { .. } => {}
-    }
-
-    Ok(())
-}

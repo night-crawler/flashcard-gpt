@@ -20,6 +20,24 @@ pub enum State {
         title: String,
         tags: Vec<String>,
     },
+    ReceiveDeckParent {
+        title: String,
+        tags: Vec<String>,
+        description: String,
+    },
+    ReceiveDeckSettings {
+        title: String,
+        tags: Vec<String>,
+        description: String,
+        parent: Option<String>,
+    },
+    ReceiveDeckConfirm {
+        title: String,
+        tags: Vec<String>,
+        description: String,
+        parent: Option<String>,
+        daily_limit: Option<usize>,
+    },
 }
 
 

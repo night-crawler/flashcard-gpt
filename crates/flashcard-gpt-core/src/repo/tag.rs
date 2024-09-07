@@ -28,7 +28,7 @@ mod tests {
         let user = create_user("tag_create").await?;
 
         let tag = CreateTagDto {
-            user: user.id,
+            user: user.id.clone(),
             name: Arc::from("title"),
             slug: Arc::from("slug"),
         };
@@ -37,6 +37,20 @@ mod tests {
         assert_eq!(tag.name.as_ref(), "title");
         assert_eq!(tag.slug.as_ref(), "slug");
 
+
+        for i in 0..10 {
+            let tag = CreateTagDto {
+                user: user.id.clone(),
+                name: Arc::from(format!("title {i}")),
+                slug: Arc::from(format!("slug-{i}")),
+            };
+
+            let _ = repo.create(tag).await?;
+        }
+        
+        let tags = repo.list_by_user_id(user.id).await?;
+        assert_eq!(tags.len(), 11);
+        
         Ok(())
     }
 }

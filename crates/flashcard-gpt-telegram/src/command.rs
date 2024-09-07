@@ -44,7 +44,7 @@ pub enum DeckCommand {
     Create,
     
     /// Continue to the next state
-    Continue,
+    Next,
 }
 
 #[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]

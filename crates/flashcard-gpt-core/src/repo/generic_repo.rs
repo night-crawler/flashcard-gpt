@@ -1,6 +1,8 @@
 use crate::error::CoreError;
 use crate::ext::db::DbExt;
 use crate::ext::record_id::RecordIdExt;
+use crate::ext::response_ext::ResponseExt;
+use serde::Serialize;
 use std::fmt::Debug;
 use surrealdb::engine::remote::ws::Client;
 use surrealdb::Surreal;
@@ -78,5 +80,30 @@ where
             .get_entity_by_id(id)
             .instrument(Span::current())
             .await
+    }
+
+    pub async fn list_by_user_id(
+        &self,
+        user_id: impl RecordIdExt + Debug + Serialize + 'static,
+    ) -> Result<Vec<Read>, CoreError> {
+        let fetch = if self.fetch.is_empty() {
+            String::new()
+        } else {
+            format!("fetch {}", self.fetch)
+        };
+        let query = format!(
+            r#"
+            select * from {table_name} where user=$user_id {fetch};
+            "#,
+            table_name = self.table_name,
+            fetch = fetch
+        );
+
+        let mut response = self.db.query(query).bind(("user_id", user_id)).await?;
+
+        response.errors_or_ok()?;
+
+        let result: Vec<Read> = response.take(0)?;
+        Ok(result)
     }
 }

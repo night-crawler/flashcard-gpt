@@ -7,13 +7,14 @@ use surrealdb::sql::Thing;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Settings {
-    pub daily_limit: i32,
+    pub daily_limit: usize,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeckDto {
+    pub id: Thing,
     pub description: Option<Arc<str>>,
-    pub parent: Option<Arc<DeckDto>>,
+    pub parent: Option<Thing>,
     pub settings: Option<Settings>,
     pub tags: Vec<TagDto>,
     pub time: Time,
@@ -24,7 +25,7 @@ pub struct DeckDto {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateDeckDto {
     pub description: Option<Arc<str>>,
-    pub parent: Option<Arc<Thing>>,
+    pub parent: Option<Thing>,
     pub settings: Option<Settings>,
     pub tags: Vec<Thing>,
     pub title: Arc<str>,
