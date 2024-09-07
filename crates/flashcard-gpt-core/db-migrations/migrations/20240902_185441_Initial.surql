@@ -87,6 +87,7 @@ DEFINE INDEX unique_in_out ON deck_card FIELDS in, out UNIQUE;
 DEFINE TABLE global_settings TYPE ANY SCHEMAFULL PERMISSIONS FOR select, create, update, delete WHERE user = $auth.id;
 
 DEFINE FIELD daily_limit ON global_settings TYPE int DEFAULT 0 ASSERT $value >= 0 AND $value <= 0 PERMISSIONS FULL;
+DEFINE FIELD time ON global_settings TYPE object DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON global_settings TYPE datetime DEFAULT time::now() VALUE $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON global_settings TYPE datetime DEFAULT time::now() VALUE time::now() PERMISSIONS FULL;
 DEFINE FIELD timetable ON global_settings TYPE array<array<duration, 2>> DEFAULT [] PERMISSIONS FULL;
@@ -101,6 +102,7 @@ DEFINE TABLE history TYPE RELATION IN deck_card OUT user SCHEMAFULL PERMISSIONS 
 DEFINE FIELD difficulty ON history TYPE int ASSERT $value >= 0 AND $value <= 10 PERMISSIONS FULL;
 DEFINE FIELD time ON history TYPE option<object> DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON history TYPE datetime DEFAULT time::now() VALUE $before OR time::now() PERMISSIONS FULL;
+DEFINE FIELD time.updated_at ON history TYPE datetime DEFAULT time::now() VALUE time::now() PERMISSIONS FULL;
 
 -- ------------------------------
 -- TABLE: schedule
@@ -111,6 +113,7 @@ DEFINE TABLE schedule TYPE ANY SCHEMALESS PERMISSIONS FOR select, create, update
 DEFINE FIELD deck_card ON schedule TYPE record<deck_card> PERMISSIONS FULL;
 DEFINE FIELD time ON schedule TYPE option<object> DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON schedule TYPE datetime DEFAULT time::now() VALUE $before OR time::now() PERMISSIONS FULL;
+DEFINE FIELD time.updated_at ON schedule TYPE datetime DEFAULT time::now() VALUE time::now() PERMISSIONS FULL;
 DEFINE FIELD time.fire_at ON schedule TYPE datetime PERMISSIONS FULL;
 DEFINE FIELD user ON schedule TYPE record<user> ASSERT $value != NONE AND $value != NULL AND fn::exists(<string> $value) PERMISSIONS FULL;
 

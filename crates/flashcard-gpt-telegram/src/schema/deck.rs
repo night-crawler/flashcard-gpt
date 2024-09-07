@@ -1,19 +1,19 @@
+use anyhow::anyhow;
 use crate::command::DeckCommand;
 use crate::db::repositories::Repositories;
 use crate::ext::binding::BindingExt;
+use crate::ext::bot::BotExt;
 use crate::schema::receive_next;
 use crate::state::State;
 use crate::FlashGptDialogue;
 use flashcard_gpt_core::dto::deck::{CreateDeckDto, Settings};
-use flashcard_gpt_core::reexports::db::RecordId;
-use std::str::FromStr;
+use flashcard_gpt_core::reexports::db::sql::Thing;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::payloads::SendMessageSetters;
 use teloxide::prelude::{DependencyMap, Message, Requester, Update};
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::Bot;
-use crate::ext::bot::BotExt;
 
 pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let deck_command_handler = teloxide::filter_command::<DeckCommand, _>().branch(
@@ -149,7 +149,7 @@ async fn receive_deck_description(
             .await?;
         return Ok(());
     };
-    
+
     let binding = repositories
         .bindings
         .get_or_create_telegram_binding(&msg)
@@ -159,7 +159,7 @@ async fn receive_deck_description(
         .decks
         .list_by_user_id(binding.user.id.clone())
         .await?;
-    
+
     bot.send_decks_menu(msg.chat.id, decks).await?;
 
     dialogue
@@ -219,10 +219,10 @@ async fn receive_deck_settings(
         .await?;
         return Ok(());
     };
-    
+
     bot.send_message(msg.chat.id, "Confirm the deck creation")
         .await?;
-    
+
     dialogue
         .update(State::ReceiveDeckConfirm {
             title,
@@ -255,13 +255,8 @@ async fn create_deck(
         .await?;
 
     let parent = if let Some(parent) = parent {
-        Some(
-            repositories
-                .decks
-                .get_by_id(RecordId::from_str(&parent)?)
-                .await?
-                .id,
-        )
+        let parent = Thing::try_from(parent).map_err(|e| anyhow!("Failed to get parent"))?;
+        repositories.decks.get_by_id(parent).await?.id.into()
     } else {
         None
     };

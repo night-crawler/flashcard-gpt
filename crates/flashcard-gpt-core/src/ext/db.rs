@@ -1,10 +1,10 @@
 use crate::error::CoreError;
-use crate::ext::record_id::RecordIdExt;
 use crate::ext::response_ext::ResponseExt;
 use std::fmt::Debug;
 use std::future::Future;
 use std::sync::Arc;
 use surrealdb::engine::remote::ws::Client;
+use surrealdb::sql::Thing;
 use surrealdb::Surreal;
 
 pub trait DbExt {
@@ -21,7 +21,8 @@ pub trait DbExt {
 
     fn get_entity_by_id<R>(
         &self,
-        id: impl RecordIdExt + Debug,
+        id: Thing,
+        fetch: &'static str,
     ) -> impl Future<Output = Result<R, CoreError>>
     where
         R: serde::de::DeserializeOwned;
@@ -75,12 +76,18 @@ impl DbExt for Surreal<Client> {
         let card = result.ok_or_else(|| CoreError::CreateError(format!("{:?}", dto).into()))?;
         Ok(card)
     }
-    async fn get_entity_by_id<R>(&self, id: impl RecordIdExt + Debug) -> Result<R, CoreError>
+    async fn get_entity_by_id< R>(&self, id: Thing, fetch: &'static str) -> Result<R, CoreError>
     where
         R: serde::de::DeserializeOwned,
     {
-        let id = id.record_id();
-        let result: Option<R> = self.select(id.clone()).await?;
+        let fetch = if fetch.is_empty() {
+            String::new()
+        } else {
+            format!("fetch {}", fetch)
+        };
+        let mut response = self.query(format!("select * from $id {fetch}")).bind(("id", id.clone())).await?;
+        response.errors_or_ok()?;
+        let result: Option<R> = response.take(0)?;
         if let Some(result) = result {
             Ok(result)
         } else {

@@ -1,10 +1,9 @@
 use crate::error::CoreError;
 use crate::ext::db::DbExt;
-use crate::ext::record_id::RecordIdExt;
 use crate::ext::response_ext::ResponseExt;
-use serde::Serialize;
 use std::fmt::Debug;
 use surrealdb::engine::remote::ws::Client;
+use surrealdb::sql::Thing;
 use surrealdb::Surreal;
 use tracing::{Instrument, Span};
 
@@ -75,16 +74,16 @@ where
     }
 
     #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?id))]
-    pub async fn get_by_id(&self, id: impl RecordIdExt + Debug) -> Result<Read, CoreError> {
+    pub async fn get_by_id(&self, id: Thing) -> Result<Read, CoreError> {
         self.db
-            .get_entity_by_id(id)
+            .get_entity_by_id(id, self.fetch)
             .instrument(Span::current())
             .await
     }
 
     pub async fn list_by_user_id(
         &self,
-        user_id: impl RecordIdExt + Debug + Serialize + 'static,
+        user_id: Thing,
     ) -> Result<Vec<Read>, CoreError> {
         let fetch = if self.fetch.is_empty() {
             String::new()
