@@ -8,6 +8,7 @@ pub mod db;
 pub mod ext;
 pub mod schema;
 pub mod state;
+pub mod macros;
 
 use crate::db::repositories::Repositories;
 use crate::schema::schema;

@@ -12,6 +12,8 @@ use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{CallbackQuery, DependencyMap, Message, Requester, Update};
 use teloxide::Bot;
+use crate::patch_state;
+use crate::schema::deck::handle_create_deck;
 
 pub fn root_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let root_command_handler = teloxide::filter_command::<RootCommand, _>()
@@ -51,7 +53,7 @@ async fn handle_start(
 ) -> anyhow::Result<()> {
     let _binding = repositories
         .bindings
-        .get_or_create_telegram_binding(&msg)
+        .get_or_create_telegram_binding((&msg).into())
         .await?;
     bot.delete_message(msg.chat.id, msg.id).await?;
     bot.send_menu::<RootCommand>(dialogue.chat_id()).await?;
@@ -93,6 +95,7 @@ pub(super) async fn receive_root_menu_item(
     bot: Bot,
     dialogue: FlashGptDialogue,
     callback_query: CallbackQuery,
+    repositories: Repositories,
 ) -> anyhow::Result<()> {
     let state = dialogue.get().await?;
     let Some(menu_item) = &callback_query.data else {
@@ -104,14 +107,14 @@ pub(super) async fn receive_root_menu_item(
         dialogue.update(State::InsideRootMenu).await?;
         return Ok(());
     };
+    
+    let message = callback_query.regular_message();
 
-    if let Some(message) = callback_query.message {
-        bot.delete_message(message.chat().id, message.id()).await?;
-        // bot.edit_message_text(message.chat().id, message.id(), text).await?;
+    if let Some(message) = message {
+        bot.delete_message(message.chat.id, message.id).await?;
     } else if let Some(id) = callback_query.inline_message_id {
         bot.edit_message_text_inline(id, format!("You chose: {menu_item}"))
             .await?;
-        // bot.delete_message(message.chat().id, message.id()).await?;
     }
 
     info!(?state, menu_item, "Received a menu item");
@@ -145,17 +148,25 @@ pub(super) async fn receive_root_menu_item(
                 }
             }
         }
-        (Some(State::InsideDeckMenu), item) if let Ok(_cmd) = DeckCommand::from_str(item) => {
-            bot.send_message(dialogue.chat_id(), "Deck menu item")
-                .await?;
-            dialogue.update(State::InsideDeckMenu).await?;
+        (Some(State::InsideDeckMenu), item) if let Ok(cmd) = DeckCommand::from_str(item) => {
+            match cmd {
+                DeckCommand::Create => {
+                    handle_create_deck(bot, dialogue).await?;
+                }
+                _ => {}
+            }
         }
-        (Some(State::ReceiveDeckTags { title, mut tags }), tag) => {
-            tags.push(tag.to_owned());
+        (Some(State::ReceiveDeckTags { title, tags }), tag) => {
+            info!(?tags, tag, "Received a tag");
+            let next_state = patch_state!(
+                dialogue,
+                State::ReceiveDeckTags { tags },
+                |existing: &mut Vec<String>| {
+                    existing.push(tag.to_string());
+                }
+            );
+            let desc = next_state.get_state_description(None);
             bot.send_message(dialogue.chat_id(), format!("Received tags: {tags:?}"))
-                .await?;
-            dialogue
-                .update(State::ReceiveDeckTags { title, tags })
                 .await?;
         }
         (Some(State::ReceiveDeckParent { title, tags, description }), parent) => {

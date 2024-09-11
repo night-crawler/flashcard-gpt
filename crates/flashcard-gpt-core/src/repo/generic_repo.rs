@@ -105,4 +105,20 @@ where
         let result: Vec<Read> = response.take(0)?;
         Ok(result)
     }
+    
+    pub fn begin_transaction_statement(&self) -> &'static str {
+        if self.enable_transactions {
+            "begin transaction;"
+        } else {
+            ""
+        }
+    }
+    
+    pub fn commit_transaction_statement(&self) -> &'static str {
+        if self.enable_transactions {
+            "commit transaction;"
+        } else {
+            ""
+        }
+    }
 }

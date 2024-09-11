@@ -131,6 +131,8 @@ DEFINE FIELD time ON tag TYPE object DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON tag TYPE datetime DEFAULT time::now() VALUE $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON tag TYPE datetime DEFAULT time::now() VALUE time::now() PERMISSIONS FULL;
 
+DEFINE INDEX unique_user_slug ON tag FIELDS user, slug UNIQUE;
+
 -- ------------------------------
 -- TABLE: user
 -- ------------------------------

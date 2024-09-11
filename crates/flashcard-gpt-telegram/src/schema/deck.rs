@@ -1,18 +1,16 @@
-use anyhow::anyhow;
 use crate::command::DeckCommand;
 use crate::db::repositories::Repositories;
-use crate::ext::binding::BindingExt;
 use crate::ext::bot::BotExt;
+use crate::ext::dialogue::DialogueExt;
 use crate::schema::receive_next;
 use crate::state::State;
-use crate::FlashGptDialogue;
+use crate::{patch_state, propagate, FlashGptDialogue};
+use anyhow::anyhow;
 use flashcard_gpt_core::dto::deck::{CreateDeckDto, Settings};
 use flashcard_gpt_core::reexports::db::sql::Thing;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
-use teloxide::payloads::SendMessageSetters;
 use teloxide::prelude::{DependencyMap, Message, Requester, Update};
-use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::Bot;
 
 pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
@@ -77,35 +75,13 @@ pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
     deck_message_handler
 }
 
-async fn handle_create_deck(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
-    bot.send_message(dialogue.chat_id(), "Deck name:").await?;
+pub async fn handle_create_deck(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
+    bot.send_message(
+        dialogue.chat_id(),
+        "You are creating a new deck.\nUse /cancel to exit and /next to skip the step.\nEnter the title of the deck:",
+    )
+    .await?;
     dialogue.update(State::ReceiveDeckTitle).await?;
-    Ok(())
-}
-
-async fn receive_deck_tags(
-    bot: Bot,
-    dialogue: FlashGptDialogue,
-    msg: Message,
-    (title, mut tags): (String, Vec<String>),
-) -> anyhow::Result<()> {
-    let Some(new_tags) = msg.text().map(|s| {
-        s.split(',')
-            .map(|s| s.trim().to_owned())
-            .collect::<Vec<_>>()
-    }) else {
-        bot.send_message(msg.chat.id, "Please, send the deck tags.")
-            .await?;
-        return Ok(());
-    };
-
-    tags.extend(new_tags);
-    bot.send_message(msg.chat.id, format!("Received tags: {tags:?}"))
-        .await?;
-    dialogue
-        .update(State::ReceiveDeckTags { title, tags })
-        .await?;
-
     Ok(())
 }
 
@@ -113,25 +89,61 @@ async fn receive_deck_title(
     bot: Bot,
     dialogue: FlashGptDialogue,
     msg: Message,
+    repositories: Repositories,
 ) -> anyhow::Result<()> {
-    let Some(deck_title) = msg.text().map(ToOwned::to_owned) else {
-        bot.send_message(msg.chat.id, "Please, send the deck title.")
-            .await?;
+    let desc = dialogue.get_current_state_description(Some(&msg)).await?;
+    let Some(title) = msg.text().map(ToOwned::to_owned) else {
+        bot.send_invalid_input(&msg, &desc).await?;
         return Ok(());
     };
 
-    let items = ["a", "b", "c"]
-        .into_iter()
-        .map(|cmd| InlineKeyboardButton::callback(cmd, cmd));
-    bot.send_message(msg.chat.id, "Deck tags:")
-        .reply_markup(InlineKeyboardMarkup::new([items]))
+    let next_state = State::ReceiveDeckTags {
+        title,
+        tags: Vec::new(),
+    };
+
+    let desc = next_state.get_state_description(Some(&msg));
+    let binding = repositories.get_binding(&msg).await?;
+
+    let tag_menu = repositories.build_tag_menu(binding.user.id.clone()).await?;
+    bot.send_state_and_prompt_with_keyboard(&msg, &desc, tag_menu)
         .await?;
 
-    dialogue
-        .update(State::ReceiveDeckTags {
-            title: deck_title,
-            tags: vec![],
-        })
+    dialogue.update(next_state).await?;
+
+    Ok(())
+}
+
+async fn receive_deck_tags(
+    bot: Bot,
+    dialogue: FlashGptDialogue,
+    msg: Message,
+    repositories: Repositories,
+) -> anyhow::Result<()> {
+    let desc = dialogue.get_current_state_description(Some(&msg)).await?;
+
+    let Some(new_tags) = msg.text().map(|s| {
+        s.split(',')
+            .map(|s| s.trim().to_owned())
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+    }) else {
+        bot.send_message(msg.chat.id, desc.invalid_input.as_ref())
+            .await?;
+        return Ok(());
+    };
+    let next_state = patch_state!(
+        dialogue,
+        State::ReceiveDeckTags { tags },
+        |tags: &mut Vec<String>| {
+            tags.extend(new_tags);
+        }
+    );
+    let desc = next_state.get_state_description(Some(&msg));
+    let binding = repositories.get_binding(&msg).await?;
+
+    let tag_menu = repositories.build_tag_menu(binding.user.id.clone()).await?;
+    bot.send_state_and_prompt_with_keyboard(&msg, &desc, tag_menu)
         .await?;
 
     Ok(())
@@ -141,33 +153,29 @@ async fn receive_deck_description(
     bot: Bot,
     dialogue: FlashGptDialogue,
     msg: Message,
-    (title, tags): (String, Vec<String>),
     repositories: Repositories,
 ) -> anyhow::Result<()> {
+    let desc = dialogue.get_current_state_description(Some(&msg)).await?;
     let Some(description) = msg.text().map(ToOwned::to_owned) else {
-        bot.send_message(msg.chat.id, "Please, send deck description.")
-            .await?;
+        bot.send_invalid_input(&msg, &desc).await?;
         return Ok(());
     };
 
-    let binding = repositories
-        .bindings
-        .get_or_create_telegram_binding(&msg)
+    let next = propagate!(
+        dialogue,
+        State::ReceiveDeckDescription { title, tags },
+        State::ReceiveDeckParent {
+            description: description
+        }
+    );
+
+    let desc = next.get_state_description(Some(&msg));
+
+    let binding = repositories.get_binding(&msg).await?;
+    let parent_menu = repositories
+        .build_deck_menu(binding.user.id.clone())
         .await?;
-
-    let decks = repositories
-        .decks
-        .list_by_user_id(binding.user.id.clone())
-        .await?;
-
-    bot.send_decks_menu(msg.chat.id, decks).await?;
-
-    dialogue
-        .update(State::ReceiveDeckParent {
-            title,
-            tags,
-            description,
-        })
+    bot.send_state_and_prompt_with_keyboard(&msg, &desc, parent_menu)
         .await?;
 
     Ok(())
@@ -177,27 +185,9 @@ async fn receive_deck_parent(
     bot: Bot,
     dialogue: FlashGptDialogue,
     msg: Message,
-    (title, tags, description): (String, Vec<String>, String),
 ) -> anyhow::Result<()> {
-    match msg.text().map(ToOwned::to_owned) {
-        Some(_parent) => {
-            bot.send_message(msg.chat.id, "Deck settings / daily limit:")
-                .await?;
-            dialogue
-                .update(State::ReceiveDeckSettings {
-                    title,
-                    tags,
-                    description,
-                    parent: None,
-                })
-                .await?;
-        }
-        None => {
-            bot.send_message(msg.chat.id, "Please, send deck description.")
-                .await?;
-        }
-    }
-
+    let desc = dialogue.get_current_state_description(Some(&msg)).await?;
+    bot.send_invalid_input(&msg, &desc).await?;
     Ok(())
 }
 
@@ -205,33 +195,31 @@ async fn receive_deck_settings(
     bot: Bot,
     dialogue: FlashGptDialogue,
     msg: Message,
-    (title, tags, description, parent): (String, Vec<String>, String, Option<String>),
 ) -> anyhow::Result<()> {
+    let desc = dialogue.get_current_state_description(Some(&msg)).await?;
     let Some(Ok(daily_limit)) = msg
         .text()
         .map(ToOwned::to_owned)
         .map(|s| s.parse::<usize>())
     else {
-        bot.send_message(
-            msg.chat.id,
-            "Please, send the daily limit. It must be a number.",
-        )
-        .await?;
+        bot.send_invalid_input(&msg, &desc).await?;
         return Ok(());
     };
 
-    bot.send_message(msg.chat.id, "Confirm the deck creation")
-        .await?;
-
-    dialogue
-        .update(State::ReceiveDeckConfirm {
+    let next_state = propagate!(
+        dialogue,
+        State::ReceiveDeckSettings {
             title,
             tags,
             description,
-            parent,
-            daily_limit: Some(daily_limit),
-        })
-        .await?;
+            parent
+        },
+        State::ReceiveDeckConfirm {
+            daily_limit: Some(daily_limit)
+        }
+    );
+    let desc = &next_state.get_state_description(Some(&msg));
+    bot.send_state_and_prompt(&msg, desc).await?;
 
     Ok(())
 }
@@ -240,26 +228,36 @@ async fn create_deck(
     bot: Bot,
     dialogue: FlashGptDialogue,
     msg: Message,
-    (title, tags, description, parent, daily_limit): (
-        String,
-        Vec<String>,
-        String,
-        Option<String>,
-        Option<usize>,
-    ),
     repositories: Repositories,
 ) -> anyhow::Result<()> {
-    let binding = repositories
-        .bindings
-        .get_or_create_telegram_binding(&msg)
-        .await?;
+    let desc = dialogue.get_current_state_description(Some(&msg)).await?;
+    let State::ReceiveDeckConfirm {
+        title,
+        tags,
+        description,
+        parent,
+        daily_limit,
+    } = dialogue.get_or_default().await?
+    else {
+        bot.send_invalid_input(&msg, &desc).await?;
+        return Ok(());
+    };
 
     let parent = if let Some(parent) = parent {
-        let parent = Thing::try_from(parent).map_err(|e| anyhow!("Failed to get parent"))?;
+        let parent = Thing::try_from(parent).map_err(|_| anyhow!("Failed to get parent by id"))?;
         repositories.decks.get_by_id(parent).await?.id.into()
     } else {
         None
     };
+
+    let binding = repositories.get_binding(&msg).await?;
+
+    let tags = repositories
+        .get_or_create_tags(binding.user.id.clone(), tags)
+        .await?
+        .into_iter()
+        .map(|tag| tag.id)
+        .collect();
 
     let deck = repositories
         .decks
@@ -268,7 +266,7 @@ async fn create_deck(
             description: Some(description.into()),
             parent,
             user: binding.user.id.clone(),
-            tags: vec![],
+            tags,
             settings: daily_limit.map(|limit| Settings { daily_limit: limit }),
         })
         .await?;
