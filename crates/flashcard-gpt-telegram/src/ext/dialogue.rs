@@ -9,7 +9,7 @@ pub trait DialogueExt {
     where
         T: CommandExt;
     
-    fn get_current_state_description(&self, msg: Option<&Message>) -> impl Future<Output=anyhow::Result<StateDescription>>;
+    fn get_state_description(&self, msg: Option<&Message>) -> impl Future<Output=anyhow::Result<StateDescription>>;
 }
 
 impl DialogueExt for FlashGptDialogue {
@@ -21,7 +21,7 @@ impl DialogueExt for FlashGptDialogue {
         Ok(())
     }
 
-    async fn get_current_state_description(&self, msg: Option<&Message>) -> anyhow::Result<StateDescription> {
+    async fn get_state_description(&self, msg: Option<&Message>) -> anyhow::Result<StateDescription> {
         let Some(state) = self.get().await? else {
             return Ok(StateDescription::default());
         };

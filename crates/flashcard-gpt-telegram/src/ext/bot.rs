@@ -1,5 +1,5 @@
 use crate::command::CommandExt;
-use crate::ext::menu_repr::{IteratorMenuReprExt, MenuReprExt};
+use crate::ext::menu_repr::IteratorMenuReprExt;
 use crate::state::StateDescription;
 use flashcard_gpt_core::dto::deck::DeckDto;
 use std::future::Future;

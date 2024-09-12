@@ -34,9 +34,6 @@ pub enum RootCommand {
 #[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]
 #[command(rename_rule = "lowercase")]
 pub enum DeckCommand {
-    /// Display this text
-    Help,
-
     /// Show all decks
     List,
 
@@ -50,9 +47,6 @@ pub enum DeckCommand {
 #[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]
 #[command(rename_rule = "lowercase")]
 pub enum UserCommand {
-    /// Display this text
-    Help,
-
     /// Edit username
     EditUsername,
 
@@ -66,9 +60,6 @@ pub enum UserCommand {
 #[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]
 #[command(rename_rule = "lowercase")]
 pub enum CardCommand {
-    /// Display this text
-    Help,
-
     /// Show all cards
     List,
 }
@@ -76,9 +67,6 @@ pub enum CardCommand {
 #[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]
 #[command(rename_rule = "lowercase")]
 pub enum CardGroupCommand {
-    /// Display this text
-    Help,
-
     /// Show all card groups
     List,
 }
@@ -86,9 +74,6 @@ pub enum CardGroupCommand {
 #[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]
 #[command(rename_rule = "lowercase")]
 pub enum TagCommand {
-    /// Display this text
-    Help,
-
     /// Show all tags
     List,
 }

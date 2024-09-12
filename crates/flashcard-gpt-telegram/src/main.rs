@@ -2,13 +2,13 @@
 #![feature(if_let_guard)]
 #![feature(array_chunks)]
 #![feature(iter_array_chunks)]
-
+#![feature(anonymous_lifetime_in_impl_trait)]
 pub mod command;
 pub mod db;
 pub mod ext;
+pub mod macros;
 pub mod schema;
 pub mod state;
-pub mod macros;
 
 use crate::db::repositories::Repositories;
 use crate::schema::schema;
@@ -46,17 +46,5 @@ async fn main() -> anyhow::Result<()> {
         .dispatch()
         .await;
 
-    Ok(())
-}
-
-async fn invalid_state(bot: Bot, dialogue: FlashGptDialogue, msg: Message) -> anyhow::Result<()> {
-    bot.send_message(
-        msg.chat.id,
-        format!(
-            "Unable to handle the message. Type /help to see the usage. Current state: {:?}",
-            dialogue.get().await?
-        ),
-    )
-    .await?;
     Ok(())
 }

@@ -8,6 +8,7 @@ use crate::{patch_state, propagate, FlashGptDialogue};
 use anyhow::anyhow;
 use flashcard_gpt_core::dto::deck::{CreateDeckDto, Settings};
 use flashcard_gpt_core::reexports::db::sql::Thing;
+use flashcard_gpt_core::reexports::trace::info;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Message, Requester, Update};
@@ -76,6 +77,9 @@ pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
 }
 
 pub async fn handle_create_deck(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
+    let state = dialogue.get_or_default().await?;
+    info!(?state, "Handling command in state");
+
     bot.send_message(
         dialogue.chat_id(),
         "You are creating a new deck.\nUse /cancel to exit and /next to skip the step.\nEnter the title of the deck:",
@@ -91,7 +95,10 @@ async fn receive_deck_title(
     msg: Message,
     repositories: Repositories,
 ) -> anyhow::Result<()> {
-    let desc = dialogue.get_current_state_description(Some(&msg)).await?;
+    let state = dialogue.get_or_default().await?;
+    info!(?state, "Handling command in state");
+
+    let desc = dialogue.get_state_description(Some(&msg)).await?;
     let Some(title) = msg.text().map(ToOwned::to_owned) else {
         bot.send_invalid_input(&msg, &desc).await?;
         return Ok(());
@@ -120,7 +127,10 @@ async fn receive_deck_tags(
     msg: Message,
     repositories: Repositories,
 ) -> anyhow::Result<()> {
-    let desc = dialogue.get_current_state_description(Some(&msg)).await?;
+    let state = dialogue.get_or_default().await?;
+    info!(?state, "Handling command in state");
+
+    let desc = dialogue.get_state_description(Some(&msg)).await?;
 
     let Some(new_tags) = msg.text().map(|s| {
         s.split(',')
@@ -155,7 +165,10 @@ async fn receive_deck_description(
     msg: Message,
     repositories: Repositories,
 ) -> anyhow::Result<()> {
-    let desc = dialogue.get_current_state_description(Some(&msg)).await?;
+    let state = dialogue.get_or_default().await?;
+    info!(?state, "Handling command in state");
+
+    let desc = dialogue.get_state_description(Some(&msg)).await?;
     let Some(description) = msg.text().map(ToOwned::to_owned) else {
         bot.send_invalid_input(&msg, &desc).await?;
         return Ok(());
@@ -186,8 +199,12 @@ async fn receive_deck_parent(
     dialogue: FlashGptDialogue,
     msg: Message,
 ) -> anyhow::Result<()> {
-    let desc = dialogue.get_current_state_description(Some(&msg)).await?;
+    let state = dialogue.get_or_default().await?;
+    info!(?state, "Handling command in state");
+
+    let desc = dialogue.get_state_description(Some(&msg)).await?;
     bot.send_invalid_input(&msg, &desc).await?;
+
     Ok(())
 }
 
@@ -196,7 +213,10 @@ async fn receive_deck_settings(
     dialogue: FlashGptDialogue,
     msg: Message,
 ) -> anyhow::Result<()> {
-    let desc = dialogue.get_current_state_description(Some(&msg)).await?;
+    let state = dialogue.get_or_default().await?;
+    info!(?state, "Handling command in state");
+
+    let desc = dialogue.get_state_description(Some(&msg)).await?;
     let Some(Ok(daily_limit)) = msg
         .text()
         .map(ToOwned::to_owned)
@@ -218,6 +238,7 @@ async fn receive_deck_settings(
             daily_limit: Some(daily_limit)
         }
     );
+
     let desc = &next_state.get_state_description(Some(&msg));
     bot.send_state_and_prompt(&msg, desc).await?;
 
@@ -230,14 +251,17 @@ async fn create_deck(
     msg: Message,
     repositories: Repositories,
 ) -> anyhow::Result<()> {
-    let desc = dialogue.get_current_state_description(Some(&msg)).await?;
+    let state = dialogue.get_or_default().await?;
+    info!(?state, "Handling command in state");
+
+    let desc = dialogue.get_state_description(Some(&msg)).await?;
     let State::ReceiveDeckConfirm {
         title,
         tags,
         description,
         parent,
         daily_limit,
-    } = dialogue.get_or_default().await?
+    } = state
     else {
         bot.send_invalid_input(&msg, &desc).await?;
         return Ok(());

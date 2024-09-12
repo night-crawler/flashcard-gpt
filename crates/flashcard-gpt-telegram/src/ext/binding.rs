@@ -11,15 +11,16 @@ use teloxide::types::{Chat, User};
 pub trait BindingExt {
     fn get_or_create_telegram_binding(
         &self,
-        identity: BindingEntity,
-    ) -> impl Future<Output=Result<BindingDto, CoreError>>;
+        entity: impl Into<BindingEntity<'_>>,
+    ) -> impl Future<Output = Result<BindingDto, CoreError>>;
 }
 
 impl BindingExt for BindingRepo {
     async fn get_or_create_telegram_binding(
         &self,
-        entity: BindingEntity<'_>,
+        entity: impl Into<BindingEntity<'_>>,
     ) -> Result<BindingDto, CoreError> {
+        let entity = entity.into();
         let source_id = entity.id();
 
         let binding = self.get_by_source_id(Arc::clone(&source_id)).await?;
@@ -65,8 +66,12 @@ impl<'a> BindingEntity<'a> {
 
     pub fn data(&self) -> flashcard_gpt_core::reexports::json::Value {
         match self {
-            BindingEntity::User(user) => flashcard_gpt_core::reexports::json::to_value(user).unwrap(),
-            BindingEntity::Chat(chat) => flashcard_gpt_core::reexports::json::to_value(chat).unwrap(),
+            BindingEntity::User(user) => {
+                flashcard_gpt_core::reexports::json::to_value(user).unwrap()
+            }
+            BindingEntity::Chat(chat) => {
+                flashcard_gpt_core::reexports::json::to_value(chat).unwrap()
+            }
         }
     }
 
@@ -79,12 +84,15 @@ impl<'a> BindingEntity<'a> {
             BindingEntity::Chat(chat) => {
                 format!("chat-{}telegram-flash-gpt.example.com", chat.id)
             }
-        }.into()
+        }
+        .into()
     }
-
 }
 
-impl<'a, 'b> From<&'b Message> for BindingEntity<'a> where 'b: 'a {
+impl<'a, 'b> From<&'b Message> for BindingEntity<'a>
+where
+    'b: 'a,
+{
     fn from(value: &'b Message) -> Self {
         if let Some(user) = &value.from {
             BindingEntity::User(user)
@@ -94,13 +102,19 @@ impl<'a, 'b> From<&'b Message> for BindingEntity<'a> where 'b: 'a {
     }
 }
 
-impl<'a, 'b> From<&'b User> for BindingEntity<'a> where 'b: 'a {
+impl<'a, 'b> From<&'b User> for BindingEntity<'a>
+where
+    'b: 'a,
+{
     fn from(value: &'b User) -> Self {
         BindingEntity::User(value)
     }
-} 
+}
 
-impl<'a, 'b> From<&'b Chat> for BindingEntity<'a> where 'b: 'a {
+impl<'a, 'b> From<&'b Chat> for BindingEntity<'a>
+where
+    'b: 'a,
+{
     fn from(value: &'b Chat) -> Self {
         BindingEntity::Chat(value)
     }
@@ -139,3 +153,21 @@ impl<'a> From<&BindingEntity<'a>> for BindingIdentity {
         }
     }
 }
+
+impl<'a, 'b> TryFrom<&'b Update> for BindingEntity<'a>
+where
+    'b: 'a,
+{
+    type Error = anyhow::Error;
+
+    fn try_from(value: &'b Update) -> Result<Self, Self::Error> {
+        if let Some(user) = value.from() {
+            Ok(BindingEntity::User(user))
+        } else if let Some(chat) = value.chat() {
+            Ok(BindingEntity::Chat(chat))
+        } else {
+            Err(anyhow::anyhow!("No user or chat found in the update: {value:?}"))
+        }
+    }
+}
+
