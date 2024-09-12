@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use crate::command::DeckCommand;
 use crate::db::repositories::Repositories;
 use crate::ext::bot::BotExt;
@@ -13,6 +14,7 @@ use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Message, Requester, Update};
 use teloxide::Bot;
+use flashcard_gpt_core::dto::binding::BindingDto;
 
 pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let deck_command_handler = teloxide::filter_command::<DeckCommand, _>().branch(
@@ -94,6 +96,7 @@ async fn receive_deck_title(
     dialogue: FlashGptDialogue,
     msg: Message,
     repositories: Repositories,
+    binding: Arc<BindingDto>
 ) -> anyhow::Result<()> {
     let state = dialogue.get_or_default().await?;
     info!(?state, "Handling command in state");
@@ -110,7 +113,6 @@ async fn receive_deck_title(
     };
 
     let desc = next_state.get_state_description(Some(&msg));
-    let binding = repositories.get_binding(&msg).await?;
 
     let tag_menu = repositories.build_tag_menu(binding.user.id.clone()).await?;
     bot.send_state_and_prompt_with_keyboard(&msg, &desc, tag_menu)
@@ -126,6 +128,7 @@ async fn receive_deck_tags(
     dialogue: FlashGptDialogue,
     msg: Message,
     repositories: Repositories,
+    binding: Arc<BindingDto>
 ) -> anyhow::Result<()> {
     let state = dialogue.get_or_default().await?;
     info!(?state, "Handling command in state");
@@ -150,7 +153,6 @@ async fn receive_deck_tags(
         }
     );
     let desc = next_state.get_state_description(Some(&msg));
-    let binding = repositories.get_binding(&msg).await?;
 
     let tag_menu = repositories.build_tag_menu(binding.user.id.clone()).await?;
     bot.send_state_and_prompt_with_keyboard(&msg, &desc, tag_menu)
@@ -164,6 +166,7 @@ async fn receive_deck_description(
     dialogue: FlashGptDialogue,
     msg: Message,
     repositories: Repositories,
+    binding: Arc<BindingDto>
 ) -> anyhow::Result<()> {
     let state = dialogue.get_or_default().await?;
     info!(?state, "Handling command in state");
@@ -184,7 +187,6 @@ async fn receive_deck_description(
 
     let desc = next.get_state_description(Some(&msg));
 
-    let binding = repositories.get_binding(&msg).await?;
     let parent_menu = repositories
         .build_deck_menu(binding.user.id.clone())
         .await?;
@@ -250,6 +252,7 @@ async fn create_deck(
     dialogue: FlashGptDialogue,
     msg: Message,
     repositories: Repositories,
+    binding: Arc<BindingDto>
 ) -> anyhow::Result<()> {
     let state = dialogue.get_or_default().await?;
     info!(?state, "Handling command in state");
@@ -273,8 +276,6 @@ async fn create_deck(
     } else {
         None
     };
-
-    let binding = repositories.get_binding(&msg).await?;
 
     let tags = repositories
         .get_or_create_tags(binding.user.id.clone(), tags)

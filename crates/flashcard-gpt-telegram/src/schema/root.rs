@@ -8,6 +8,7 @@ use crate::schema::deck::handle_create_deck;
 use crate::state::{FlashGptDialogue, State};
 use flashcard_gpt_core::reexports::trace::{error, info};
 use std::str::FromStr;
+use std::sync::Arc;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{
@@ -81,11 +82,8 @@ pub(super) async fn receive_root_menu_item(
     dialogue: FlashGptDialogue,
     callback_query: CallbackQuery,
     repositories: Repositories,
+    binding: Arc<BindingDto>
 ) -> anyhow::Result<()> {
-    let binding = repositories
-        .bindings
-        .get_or_create_telegram_binding(&callback_query.from)
-        .await?;
     let state = dialogue.get().await?;
     let Some(menu_item) = &callback_query.data else {
         bot.send_message(
@@ -188,16 +186,12 @@ pub(super) async fn receive_root_menu_item(
         (_, _) => {}
     }
 
-    // bot.send_message(dialogue.chat_id(), menu_item).await?;
-    // dialogue.update(State::ReceiveDeckMenuItem).await?;
-
     Ok(())
 }
 
 pub async fn receive_inline_query(
     bot: Bot,
     q: InlineQuery,
-    repositories: Repositories,
 ) -> anyhow::Result<()> {
     info!(?q, "Received an inline query");
 
@@ -230,10 +224,9 @@ pub async fn receive_inline_query(
     .description("DuckDuckGo Search")
     .thumbnail_url(
         "https://duckduckgo.com/assets/logo_header.v108.png"
-            .parse()
-            .unwrap(),
+            .parse()?,
     )
-    .url("https://duckduckgo.com/about".parse().unwrap()); // Note: This is the url that will open if they click the thumbnail
+    .url("https://duckduckgo.com/about".parse()?); // Note: This is the url that will open if they click the thumbnail
 
     let results = vec![
         InlineQueryResult::Article(google_search),

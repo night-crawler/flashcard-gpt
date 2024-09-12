@@ -41,7 +41,7 @@ impl BindingExt for BindingRepo {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BindingEntity<'a> {
     User(&'a User),
     Chat(&'a Chat),
