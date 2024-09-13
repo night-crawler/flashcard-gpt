@@ -48,9 +48,9 @@ mod tests {
                 settings: None,
             })
             .await?;
-        
+
         let deck = repo.get_by_id(deck.id.clone()).await?;
-        
+
         assert_eq!(deck.description.as_deref(), Some("description"));
         assert!(deck.parent.is_none());
 

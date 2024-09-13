@@ -56,7 +56,7 @@ impl Repositories {
     pub async fn get_or_create_tags(
         &self,
         user_id: Thing,
-        tags: Vec<String>,
+        tags: Vec<Arc<str>>,
     ) -> anyhow::Result<Vec<TagDto>> {
         // we assume that slug after slugify stays the same
         let tags = tags

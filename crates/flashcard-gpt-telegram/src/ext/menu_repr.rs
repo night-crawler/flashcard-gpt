@@ -29,13 +29,17 @@ pub trait IteratorMenuReprExt {
     fn into_menu_repr(self) -> InlineKeyboardMarkup;
 }
 
-impl<I, T> IteratorMenuReprExt for I where I: Iterator<Item=T>, T: MenuReprExt {
+impl<I, T> IteratorMenuReprExt for I
+where
+    I: Iterator<Item=T>,
+    T: MenuReprExt,
+{
     fn into_menu_repr(self) -> InlineKeyboardMarkup {
         build_menu(self)
     }
 }
 
-pub fn build_menu<T>(items: impl Iterator<Item = T>) -> InlineKeyboardMarkup
+pub fn build_menu<T>(items: impl Iterator<Item=T>) -> InlineKeyboardMarkup
 where
     T: MenuReprExt,
 {

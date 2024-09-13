@@ -12,7 +12,7 @@ pub trait BindingExt {
     fn get_or_create_telegram_binding(
         &self,
         entity: impl Into<BindingEntity<'_>>,
-    ) -> impl Future<Output = Result<BindingDto, CoreError>>;
+    ) -> impl Future<Output=Result<BindingDto, CoreError>>;
 }
 
 impl BindingExt for BindingRepo {
@@ -85,7 +85,7 @@ impl<'a> BindingEntity<'a> {
                 format!("chat-{}telegram-flash-gpt.example.com", chat.id)
             }
         }
-        .into()
+            .into()
     }
 }
 

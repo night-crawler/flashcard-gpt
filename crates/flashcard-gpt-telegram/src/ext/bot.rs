@@ -10,11 +10,11 @@ use teloxide::utils::command::BotCommands;
 use teloxide::Bot;
 
 pub trait BotExt {
-    fn send_menu<T>(&self, chat_id: ChatId) -> impl Future<Output = anyhow::Result<()>>
+    fn send_menu<T>(&self, chat_id: ChatId) -> impl Future<Output=anyhow::Result<()>>
     where
         T: CommandExt;
 
-    fn send_help<T>(&self, chat_id: ChatId) -> impl Future<Output = anyhow::Result<()>>
+    fn send_help<T>(&self, chat_id: ChatId) -> impl Future<Output=anyhow::Result<()>>
     where
         T: BotCommands;
 
@@ -22,26 +22,29 @@ pub trait BotExt {
         &self,
         chat_id: ChatId,
         decks: Vec<DeckDto>,
-    ) -> impl Future<Output = anyhow::Result<()>>;
+    ) -> impl Future<Output=anyhow::Result<()>>;
 
+    #[deprecated]
     fn send_invalid_input(
         &self,
         msg: &Message,
         state_description: &StateDescription,
-    ) -> impl Future<Output = anyhow::Result<()>>;
+    ) -> impl Future<Output=anyhow::Result<()>>;
 
+    #[deprecated]
     fn send_state_and_prompt(
         &self,
         msg: &Message,
         state_description: &StateDescription,
-    ) -> impl Future<Output = anyhow::Result<()>>;
+    ) -> impl Future<Output=anyhow::Result<()>>;
 
+    #[deprecated]
     fn send_state_and_prompt_with_keyboard(
         &self,
         msg: &Message,
         state_description: &StateDescription,
         keyboard: InlineKeyboardMarkup,
-    ) -> impl Future<Output = anyhow::Result<()>>;
+    ) -> impl Future<Output=anyhow::Result<()>>;
 }
 
 impl BotExt for Bot {
@@ -74,6 +77,7 @@ impl BotExt for Bot {
         Ok(())
     }
 
+
     async fn send_invalid_input(
         &self,
         msg: &Message,
@@ -83,7 +87,7 @@ impl BotExt for Bot {
             msg.chat.id,
             state_description.invalid_input.clone().as_ref(),
         )
-        .await?;
+            .await?;
         Ok(())
     }
 

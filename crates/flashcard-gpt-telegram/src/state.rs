@@ -1,10 +1,42 @@
 use crate::ext::message::MessageExt;
+use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::prelude::Dialogue;
 use teloxide::types::Message;
 
 pub type FlashGptDialogue = Dialogue<State, InMemStorage<State>>;
+
+
+#[derive(Debug, Default, Clone)]
+pub struct ModifyDeckFields {
+    pub id: Option<Arc<str>>,
+    pub title: Option<Arc<str>>,
+    pub tags: Vec<Arc<str>>,
+    pub description: Option<Arc<str>>,
+    pub parent: Option<Arc<str>>,
+    pub daily_limit: Option<usize>,
+}
+
+impl Display for ModifyDeckFields {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "id: {}\n\
+            title: {}\n\
+            tags: {}\n\
+            description: {}\n\
+            parent: {}\n\
+            daily_limit: {}",
+            self.id.as_deref().unwrap_or("None"),
+            self.title.as_deref().unwrap_or("None"),
+            self.tags.iter().map(|tag| tag.as_ref()).collect::<Vec<_>>().join(", "),
+            self.description.as_deref().unwrap_or("None"),
+            self.parent.as_deref().unwrap_or("None"),
+            self.daily_limit.map_or("None".to_string(), |limit| limit.to_string()),
+        )
+    }
+}
 
 #[derive(Clone, Default, Debug)]
 pub enum State {
@@ -16,33 +48,12 @@ pub enum State {
     InsideCardGroupMenu,
     InsideTagMenu,
 
-    ReceiveDeckTitle,
-    ReceiveDeckTags {
-        title: String,
-        tags: Vec<String>,
-    },
-    ReceiveDeckDescription {
-        title: String,
-        tags: Vec<String>,
-    },
-    ReceiveDeckParent {
-        title: String,
-        tags: Vec<String>,
-        description: String,
-    },
-    ReceiveDeckSettings {
-        title: String,
-        tags: Vec<String>,
-        description: String,
-        parent: Option<String>,
-    },
-    ReceiveDeckConfirm {
-        title: String,
-        tags: Vec<String>,
-        description: String,
-        parent: Option<String>,
-        daily_limit: Option<usize>,
-    },
+    ReceiveDeckTitle(ModifyDeckFields),
+    ReceiveDeckTags(ModifyDeckFields),
+    ReceiveDeckDescription(ModifyDeckFields),
+    ReceiveDeckParent(ModifyDeckFields),
+    ReceiveDeckSettingsDailyLimit(ModifyDeckFields),
+    ReceiveDeckConfirm(ModifyDeckFields),
 }
 
 #[derive(Default, Debug)]
@@ -62,55 +73,49 @@ impl State {
             State::InsideCardMenu => StateDescription::default(),
             State::InsideCardGroupMenu => StateDescription::default(),
             State::InsideTagMenu => StateDescription::default(),
-            
-            State::ReceiveDeckTitle => {
+
+            State::ReceiveDeckTitle(fields) => {
                 StateDescription {
                     invalid_input: Arc::from(format!("Invalid deck title `{text}`")),
-                    repr: Arc::from("Title: None"),
+                    repr: Arc::from(fields.to_string()),
                     prompt: Arc::from("Please, enter deck title"),
                 }
-            },
-            State::ReceiveDeckTags { title, tags } => {
+            }
+            State::ReceiveDeckTags(fields) => {
                 StateDescription {
                     invalid_input: Arc::from(format!("Invalid tags `{text}`")),
-                    repr: Arc::from(format!("Title: {title}\nTags: {tags:?}")),
+                    repr: Arc::from(fields.to_string()),
                     prompt: Arc::from("Please, enter deck tags"),
                 }
-            },
-            State::ReceiveDeckDescription { title, tags } => {
+            }
+            State::ReceiveDeckDescription(fields) => {
                 StateDescription {
                     invalid_input: Arc::from(format!("Invalid description `{text}`")),
-                    repr: Arc::from(format!("Title: {title}\nTags: {tags:?}")),
+                    repr: Arc::from(fields.to_string()),
                     prompt: Arc::from("Please, enter deck description"),
                 }
-            },
-            State::ReceiveDeckParent { title, tags, description } => {
+            }
+            State::ReceiveDeckParent(fields) => {
                 StateDescription {
                     invalid_input: Arc::from(format!("Invalid parent `{text}`")),
-                    repr: Arc::from(format!("Title: {title}\nTags: {tags:?}\nDescription: {description}")),
+                    repr: Arc::from(fields.to_string()),
                     prompt: Arc::from("Please, enter parent deck"),
                 }
-            },
-            State::ReceiveDeckSettings { title, tags, description, parent } => {
+            }
+            State::ReceiveDeckSettingsDailyLimit(fields) => {
                 StateDescription {
                     invalid_input: Arc::from(format!("Invalid daily limit `{text}`")),
-                    repr: Arc::from(format!("Title: {title}\nTags: {tags:?}\nDescription: {description}\nParent: {parent:?}")),
+                    repr: Arc::from(fields.to_string()),
                     prompt: Arc::from("Please, enter daily limit"),
                 }
-            },
-            State::ReceiveDeckConfirm {
-                title,
-                tags,
-                description,
-                parent,
-                daily_limit,
-            } => {
+            }
+            State::ReceiveDeckConfirm(fields) => {
                 StateDescription {
                     invalid_input: Arc::from(format!("Invalid confirmation `{text}`")),
-                    repr: Arc::from(format!("Title: {title}\nTags: {tags:?}\nDescription: {description}\nParent: {parent:?}\nDaily limit: {daily_limit:?}")),
+                    repr: Arc::from(fields.to_string()),
                     prompt: Arc::from("Please, confirm deck creation"),
                 }
-            },
+            }
         }
     }
 }

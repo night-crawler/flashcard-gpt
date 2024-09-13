@@ -99,12 +99,13 @@ mod tests {
         let db = TEST_DB.get_client().await?;
         let repo = TagRepo::new_tag(db, span!(Level::INFO, "tag_create"), true);
         let user = create_user("tag_create").await?;
-        
+
         repo.create(CreateTagDto {
             user: user.id.clone(),
             name: Arc::from("not a title"),
             slug: Arc::from("not-a-title"),
-        }).await?;
+        })
+        .await?;
 
         let tags = vec![
             (Arc::from("title"), Arc::from("slug")),

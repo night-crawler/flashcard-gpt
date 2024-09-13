@@ -13,7 +13,8 @@ impl BindingRepo {
         Self::new(db, span, "binding", "user", enable_transactions)
     }
 
-    #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err, fields(source_id))]
+    #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err, fields(source_id)
+    )]
     pub async fn get_by_source_id(
         &self,
         source_id: Arc<str>,

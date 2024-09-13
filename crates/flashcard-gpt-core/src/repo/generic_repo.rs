@@ -60,7 +60,8 @@ where
         }
     }
 
-    #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?create_dto))]
+    #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?create_dto)
+    )]
     pub async fn create(&self, create_dto: Create) -> Result<Read, CoreError> {
         self.db
             .create_entity(
@@ -81,10 +82,7 @@ where
             .await
     }
 
-    pub async fn list_by_user_id(
-        &self,
-        user_id: Thing,
-    ) -> Result<Vec<Read>, CoreError> {
+    pub async fn list_by_user_id(&self, user_id: Thing) -> Result<Vec<Read>, CoreError> {
         let fetch = if self.fetch.is_empty() {
             String::new()
         } else {
@@ -105,7 +103,7 @@ where
         let result: Vec<Read> = response.take(0)?;
         Ok(result)
     }
-    
+
     pub fn begin_transaction_statement(&self) -> &'static str {
         if self.enable_transactions {
             "begin transaction;"
@@ -113,7 +111,7 @@ where
             ""
         }
     }
-    
+
     pub fn commit_transaction_statement(&self) -> &'static str {
         if self.enable_transactions {
             "commit transaction;"

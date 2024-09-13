@@ -9,6 +9,7 @@ pub mod ext;
 pub mod macros;
 pub mod schema;
 pub mod state;
+pub mod chat_manager;
 
 use crate::db::repositories::Repositories;
 use crate::schema::schema;
@@ -31,16 +32,18 @@ async fn main() -> anyhow::Result<()> {
         username: "root",
         password: "root",
     })
-    .await?;
+        .await?;
 
     db.use_ns("flashcards_gpt").use_db("flashcards").await?;
 
     let repositories = Repositories::new(db.clone(), span!(Level::INFO, "root"));
 
+    let span = span!(Level::INFO, "root");
+
     let bot = Bot::from_env();
 
     Dispatcher::builder(bot, schema())
-        .dependencies(dptree::deps![InMemStorage::<State>::new(), repositories])
+        .dependencies(dptree::deps![InMemStorage::<State>::new(), repositories, span])
         .enable_ctrlc_handler()
         .build()
         .dispatch()

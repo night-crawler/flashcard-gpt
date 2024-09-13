@@ -1,11 +1,12 @@
+use crate::chat_manager::ChatManager;
 use crate::command::{CardCommand, CardGroupCommand, CommandExt, DeckCommand, RootCommand, TagCommand, UserCommand};
 use crate::db::repositories::Repositories;
-use crate::ext::binding::{BindingExt};
+use crate::ext::binding::BindingExt;
 use crate::ext::bot::BotExt;
 use crate::ext::dialogue::DialogueExt;
-use crate::patch_state;
 use crate::schema::deck::handle_create_deck;
 use crate::state::{FlashGptDialogue, State};
+use flashcard_gpt_core::dto::binding::BindingDto;
 use flashcard_gpt_core::reexports::trace::{error, info};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -19,7 +20,6 @@ use teloxide::types::{
 };
 use teloxide::utils::command::BotCommands;
 use teloxide::Bot;
-use flashcard_gpt_core::dto::binding::BindingDto;
 
 pub fn root_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let root_command_handler = teloxide::filter_command::<RootCommand, _>()
@@ -69,7 +69,10 @@ async fn handle_start(
 }
 
 
-async fn handle_show_generic_menu<T>(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> where T: BotCommands + CommandExt {
+async fn handle_show_generic_menu<T>(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()>
+where
+    T: BotCommands + CommandExt,
+{
     bot.send_menu::<T>(dialogue.chat_id()).await?;
     bot.set_my_commands(T::bot_commands()).await?;
     dialogue.set_menu_state::<T>().await?;
@@ -78,11 +81,10 @@ async fn handle_show_generic_menu<T>(bot: Bot, dialogue: FlashGptDialogue) -> an
 
 
 pub(super) async fn receive_root_menu_item(
+    manager: ChatManager,
     bot: Bot,
     dialogue: FlashGptDialogue,
     callback_query: CallbackQuery,
-    repositories: Repositories,
-    binding: Arc<BindingDto>
 ) -> anyhow::Result<()> {
     let state = dialogue.get().await?;
     let Some(menu_item) = &callback_query.data else {
@@ -90,7 +92,7 @@ pub(super) async fn receive_root_menu_item(
             dialogue.chat_id(),
             "Didn't receive a correct menu item, resetting the dialogue",
         )
-        .await?;
+            .await?;
         dialogue.update(State::InsideRootMenu).await?;
         return Ok(());
     };
@@ -146,41 +148,21 @@ pub(super) async fn receive_root_menu_item(
                 }
             }
         }
-        (Some(State::ReceiveDeckTags { .. }), tag) => {
-            let next_state = patch_state!(
-                dialogue,
-                State::ReceiveDeckTags { tags },
-                |existing: &mut Vec<String>| {
-                    existing.push(tag.to_string());
-                }
-            );
-            let desc = next_state.get_state_description(None);
-            if let Some(message) = message {
-                let tag_menu = repositories.build_tag_menu(binding.user.id.clone()).await?;
-                bot.send_state_and_prompt_with_keyboard(message, &desc, tag_menu)
-                    .await?;
-            } else {
-                bot.send_message(dialogue.chat_id(), desc.repr.as_ref())
-                    .await?;
-            }
+        (Some(State::ReceiveDeckTags(mut fields)), tag) => {
+            fields.tags.push(tag.into());
+            let next_state = State::ReceiveDeckTags(fields);
+            manager.update_state(next_state).await?;
+            manager.send_tag_menu().await?;
         }
         (
-            Some(State::ReceiveDeckParent {
-                title,
-                tags,
-                description,
-            }),
+            Some(State::ReceiveDeckParent(mut fields)),
             parent,
         ) => {
             bot.send_message(dialogue.chat_id(), "Deck settings / daily limit:")
                 .await?;
+            fields.parent = Some(parent.into());
             dialogue
-                .update(State::ReceiveDeckSettings {
-                    title,
-                    tags,
-                    description,
-                    parent: Some(parent.to_owned()),
-                })
+                .update(State::ReceiveDeckSettingsDailyLimit(fields))
                 .await?;
         }
         (_, _) => {}
@@ -221,12 +203,12 @@ pub async fn receive_inline_query(
             q.query
         ))),
     )
-    .description("DuckDuckGo Search")
-    .thumbnail_url(
-        "https://duckduckgo.com/assets/logo_header.v108.png"
-            .parse()?,
-    )
-    .url("https://duckduckgo.com/about".parse()?); // Note: This is the url that will open if they click the thumbnail
+        .description("DuckDuckGo Search")
+        .thumbnail_url(
+            "https://duckduckgo.com/assets/logo_header.v108.png"
+                .parse()?,
+        )
+        .url("https://duckduckgo.com/about".parse()?); // Note: This is the url that will open if they click the thumbnail
 
     let results = vec![
         InlineQueryResult::Article(google_search),

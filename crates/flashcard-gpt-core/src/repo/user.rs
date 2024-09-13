@@ -16,7 +16,8 @@ impl UserRepo {
         Ok(users)
     }
 
-    #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err, fields(?user))]
+    #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err, fields(?user)
+    )]
     pub async fn create_user(&self, user: RegisterUserDto) -> Result<User, CoreError> {
         let query = r#"
             CREATE user CONTENT {
