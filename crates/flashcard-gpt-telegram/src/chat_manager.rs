@@ -26,6 +26,11 @@ impl ChatManager {
         self.dialogue.update(next_state).await?;
         Ok(desc)
     }
+    
+    pub async fn send_message(&self, text: impl Into<String>) -> anyhow::Result<()> {
+        self.bot.send_message(self.dialogue.chat_id(), text).await?;
+        Ok(())
+    }
 
     pub async fn get_state(&self) -> anyhow::Result<State> {
         Ok(self.dialogue.get_or_default().await?)

@@ -138,19 +138,19 @@ async fn receive_deck_settings(manager: ChatManager, msg: Message) -> anyhow::Re
         manager.send_invalid_input().await?;
         return Ok(());
     };
-
-    let mut fields = manager.get_modify_deck_fields().await?;
-    fields.daily_limit = Some(daily_limit);
-
+    
+    let fields = ModifyDeckFields {
+        daily_limit: Some(daily_limit),
+        ..manager.get_modify_deck_fields().await?
+    };
+    manager.update_state(State::ReceiveDeckConfirm(fields)).await?;
     manager.send_state_and_prompt().await?;
-
     Ok(())
 }
 
 async fn create_deck(
     manager: ChatManager,
     dialogue: FlashGptDialogue,
-    msg: Message,
     repositories: Repositories,
 ) -> anyhow::Result<()> {
     let fields = manager.get_modify_deck_fields().await?;
@@ -191,8 +191,7 @@ async fn create_deck(
         .await?;
 
     manager
-        .bot
-        .send_message(msg.chat.id, format!("Created a new deck: {deck:?}"))
+        .send_message(format!("Created a new deck: {deck:?}"))
         .await?;
 
     dialogue.exit().await?;
