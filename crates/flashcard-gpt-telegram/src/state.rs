@@ -1,5 +1,5 @@
 use crate::ext::message::MessageExt;
-use crate::ext::rendering::{MarkdownExt, OptionDisplayExt, VecDisplayExt};
+use crate::ext::rendering::{OptionDisplayExt, VecDisplayExt};
 use flashcard_gpt_core::reexports::json::Value;
 use std::fmt;
 use std::fmt::Display;
@@ -75,8 +75,8 @@ impl State {
     pub fn get_state_description(&self, msg: Option<&Message>) -> StateDescription {
         let text = msg.map(|msg| msg.get_text()).unwrap_or_default();
         let name = self.get_str("name").unwrap_or(self.as_ref());
-        let invalid_input = Arc::from(format!("Invalid {name}: `{text}`"));
-        let prompt = Arc::from(format!("Please, enter {name}:"));
+        let invalid_input = Arc::from(format!("Invalid <code>{name}</code>: <code>{text}</code>"));
+        let prompt = Arc::from(format!("Please, enter <code>{name}</code>:"));
         let repr = Arc::from(self.get_fields().to_string());
 
         StateDescription {
@@ -191,7 +191,7 @@ pub enum StateFields {
 impl Display for StateFields {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            StateFields::Empty => write!(f, "Empty"),
+            StateFields::Empty => write!(f, "<i>Empty</i>"),
             StateFields::Deck {
                 id,
                 title,
@@ -200,12 +200,12 @@ impl Display for StateFields {
                 parent,
                 daily_limit,
             } => {
-                writeln!(f, "id: {}", id.to_string_or_dash())?;
-                writeln!(f, "title: {}", title.to_string_or_dash())?;
-                writeln!(f, "tags: {}", tags.join_or_dash())?;
-                writeln!(f, "description: {}", description.to_string_or_dash())?;
-                writeln!(f, "parent: {}", parent.to_string_or_dash())?;
-                write!(f, "daily_limit: {}", daily_limit.to_string_or_dash())
+                writeln!(f, "<b>id:</b> <code>{}</code>", id.to_string_or_dash())?;
+                writeln!(f, "<b>title:</b> <code>{}</code>", title.to_string_or_dash())?;
+                writeln!(f, "<b>tags:</b> <code>{}</code>", tags.join_or_dash())?;
+                writeln!(f, "<b>description:</b> <code>{}</code>", description.to_string_or_dash())?;
+                writeln!(f, "<b>parent:</b> <code>{}</code>", parent.to_string_or_dash())?;
+                write!(f, "<b>daily_limit:</b> <code>{}</code>", daily_limit.to_string_or_dash())
             }
             StateFields::Card {
                 id,
@@ -218,15 +218,15 @@ impl Display for StateFields {
                 data,
                 tags,
             } => {
-                writeln!(f, "id: {}", id.to_string_or_dash())?;
-                writeln!(f, "title: {}", title.to_string_or_dash())?;
-                writeln!(f, "front: {}", front.to_string_or_dash())?;
-                writeln!(f, "back: {}", back.to_string_or_dash())?;
-                writeln!(f, "hints: {}", hints.join_or_dash())?;
-                writeln!(f, "difficulty: {}", difficulty.to_string_or_dash())?;
-                writeln!(f, "importance: {}", importance.to_string_or_dash())?;
-                writeln!(f, "data: {}", data.to_string_or_dash())?;
-                write!(f, "tags: {}", tags.join_or_dash())
+                writeln!(f, "<b>id:</b> <code>{}</code>", id.to_string_or_dash())?;
+                writeln!(f, "<b>title:</b> <code>{}</code>", title.to_string_or_dash())?;
+                writeln!(f, "<b>front:</b> <code>{}</code>", front.to_string_or_dash())?;
+                writeln!(f, "<b>back:</b> <code>{}</code>", back.to_string_or_dash())?;
+                writeln!(f, "<b>hints:</b> <code>{}</code>", hints.join_or_dash())?;
+                writeln!(f, "<b>difficulty:</b> <code>{}</code>", difficulty.to_string_or_dash())?;
+                writeln!(f, "<b>importance:</b> <code>{}</code>", importance.to_string_or_dash())?;
+                writeln!(f, "<b>data:</b> <code>{}</code>", data.to_string_or_dash())?;
+                write!(f, "<b>tags:</b> <code>{}</code>", tags.join_or_dash())
             }
         }
     }
@@ -246,7 +246,7 @@ impl StateFields {
             tags: vec![],
         }
     }
-    
+
     pub fn default_deck() -> Self {
         Self::Deck {
             id: None,
@@ -259,61 +259,3 @@ impl StateFields {
     }
 }
 
-impl MarkdownExt for StateFields {
-    fn to_markdown(&self) -> String {
-        match self {
-            StateFields::Empty => "Empty".to_string(),
-            StateFields::Deck {
-                id,
-                title,
-                tags,
-                description,
-                parent,
-                daily_limit,
-            } => format!(
-                "**id**: {}\n\
-                 **title**: {}\n\
-                 **tags**: {}\n\
-                 **description**: {}\n\
-                 **parent**: {}\n\
-                 **daily_limit**: {}",
-                id.to_string_or_dash(),
-                title.to_string_or_dash(),
-                tags.join_or_dash(),
-                description.to_string_or_dash(),
-                parent.to_string_or_dash(),
-                daily_limit.to_string_or_dash()
-            ),
-            StateFields::Card {
-                id,
-                title,
-                front,
-                back,
-                hints,
-                difficulty,
-                importance,
-                data,
-                tags,
-            } => format!(
-                "**id**: {}\n\
-                 **title**: {}\n\
-                 **front**: {}\n\
-                 **back**: {}\n\
-                 **hints**: {}\n\
-                 **difficulty**: {}\n\
-                 **importance**: {}\n\
-                 **data**: {}\n\
-                 **tags**: {}",
-                id.to_string_or_dash(),
-                title.to_string_or_dash(),
-                front.to_string_or_dash(),
-                back.to_string_or_dash(),
-                hints.join_or_dash(),
-                difficulty.to_string_or_dash(),
-                importance.to_string_or_dash(),
-                data.to_string_or_dash(),
-                tags.join_or_dash()
-            ),
-        }
-    }
-}

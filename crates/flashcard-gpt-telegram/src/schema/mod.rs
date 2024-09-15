@@ -1,22 +1,23 @@
 use crate::chat_manager::ChatManager;
 use crate::db::repositories::Repositories;
 use crate::ext::binding::BindingEntity;
+use crate::schema::card::card_schema;
 use crate::schema::deck::deck_schema;
 use crate::schema::root::{receive_inline_query, receive_root_menu_item, root_schema};
 use crate::state::{FlashGptDialogue, State};
 use flashcard_gpt_core::dto::binding::BindingDto;
-use flashcard_gpt_core::reexports::trace::{debug, warn, Span};
 use std::sync::Arc;
+use teloxide::adaptors::DefaultParseMode;
 use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::dispatching::{dialogue, UpdateFilterExt, UpdateHandler};
-use teloxide::prelude::{Message, Requester, Update};
+use teloxide::prelude::Update;
 use teloxide::types::UpdateKind;
 use teloxide::{dptree, Bot};
-use crate::schema::card::card_schema;
+use tracing::{debug, warn, Span};
 
+mod card;
 mod deck;
 mod root;
-mod card;
 
 pub fn schema() -> UpdateHandler<anyhow::Error> {
     let root_menu_handler = Update::filter_callback_query().endpoint(receive_root_menu_item);
@@ -42,7 +43,7 @@ fn init_chat_manager(
     update: Update,
     repositories: Repositories,
     binding: Arc<BindingDto>,
-    bot: Bot,
+    bot: DefaultParseMode<Bot>,
     dialogue: FlashGptDialogue,
     span: Span,
 ) -> ChatManager {
@@ -74,9 +75,7 @@ async fn create_binding(update: Update, repositories: Repositories) -> Option<Ar
     Some(binding.into())
 }
 
-async fn receive_next(
-    manager: ChatManager,
-) -> anyhow::Result<()> {
+async fn receive_next(manager: ChatManager) -> anyhow::Result<()> {
     match manager.get_state().await? {
         State::ReceiveDeckTags(fields) => {
             let next_state = State::ReceiveDeckDescription(fields);
@@ -102,18 +101,7 @@ async fn receive_next(
     Ok(())
 }
 
-pub async fn invalid_state(
-    bot: Bot,
-    dialogue: FlashGptDialogue,
-    msg: Message,
-) -> anyhow::Result<()> {
-    bot.send_message(
-        msg.chat.id,
-        format!(
-            "Unable to handle the message. Type /help to see the usage. Current state: {:?}",
-            dialogue.get().await?
-        ),
-    )
-        .await?;
+pub async fn invalid_state(manager: ChatManager) -> anyhow::Result<()> {
+    manager.send_invalid_input().await?;
     Ok(())
 }

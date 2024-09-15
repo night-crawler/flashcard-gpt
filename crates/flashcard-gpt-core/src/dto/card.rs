@@ -19,7 +19,7 @@ pub struct Card {
     pub difficulty: u8,
     pub importance: u8,
     pub tags: HashSet<Arc<TagDto>>,
-    pub time: Option<Time>, 
+    pub time: Option<Time>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

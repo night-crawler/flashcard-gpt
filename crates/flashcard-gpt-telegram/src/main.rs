@@ -3,13 +3,13 @@
 #![feature(array_chunks)]
 #![feature(iter_array_chunks)]
 #![feature(anonymous_lifetime_in_impl_trait)]
+pub mod chat_manager;
 pub mod command;
 pub mod db;
 pub mod ext;
 pub mod macros;
 pub mod schema;
 pub mod state;
-pub mod chat_manager;
 
 use crate::db::repositories::Repositories;
 use crate::schema::schema;
@@ -18,8 +18,10 @@ use flashcard_gpt_core::logging::init_tracing;
 use flashcard_gpt_core::reexports::db::engine::remote::ws::{Client, Ws};
 use flashcard_gpt_core::reexports::db::opt::auth::Root;
 use flashcard_gpt_core::reexports::db::Surreal;
-use flashcard_gpt_core::reexports::trace::{info, span, Level};
+use teloxide::adaptors::DefaultParseMode;
+use teloxide::types::ParseMode;
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
+use tracing::{info, span, Level};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -32,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
         username: "root",
         password: "root",
     })
-        .await?;
+    .await?;
 
     db.use_ns("flashcards_gpt").use_db("flashcards").await?;
 
@@ -40,10 +42,14 @@ async fn main() -> anyhow::Result<()> {
 
     let span = span!(Level::INFO, "root");
 
-    let bot = Bot::from_env();
+    let bot: DefaultParseMode<Bot> = Bot::from_env().parse_mode(ParseMode::Html);
 
     Dispatcher::builder(bot, schema())
-        .dependencies(dptree::deps![InMemStorage::<State>::new(), repositories, span])
+        .dependencies(dptree::deps![
+            InMemStorage::<State>::new(),
+            repositories,
+            span
+        ])
         .enable_ctrlc_handler()
         .build()
         .dispatch()

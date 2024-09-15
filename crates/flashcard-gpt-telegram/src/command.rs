@@ -5,7 +5,7 @@ use teloxide::macros::BotCommands;
 use teloxide::types::InlineKeyboardButton;
 
 pub trait CommandExt {
-    fn get_menu_items() -> impl Iterator<Item=InlineKeyboardButton>;
+    fn get_menu_items() -> impl Iterator<Item = InlineKeyboardButton>;
     fn get_menu_name() -> &'static str;
     fn get_corresponding_state() -> State;
 }
@@ -42,6 +42,9 @@ pub enum DeckCommand {
 
     /// Continue to the next state
     Next,
+
+    /// Cancel the current operation
+    Cancel,
 }
 
 #[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]
@@ -62,7 +65,7 @@ pub enum UserCommand {
 pub enum CardCommand {
     /// Show all cards
     List,
-    
+
     /// Create a new card
     Create,
 
@@ -85,7 +88,7 @@ pub enum TagCommand {
 }
 
 impl CommandExt for RootCommand {
-    fn get_menu_items() -> impl Iterator<Item=InlineKeyboardButton> {
+    fn get_menu_items() -> impl Iterator<Item = InlineKeyboardButton> {
         RootCommand::iter().map(|cmd| InlineKeyboardButton::callback(cmd.as_ref(), cmd.as_ref()))
     }
 
@@ -99,7 +102,7 @@ impl CommandExt for RootCommand {
 }
 
 impl CommandExt for DeckCommand {
-    fn get_menu_items() -> impl Iterator<Item=InlineKeyboardButton> {
+    fn get_menu_items() -> impl Iterator<Item = InlineKeyboardButton> {
         DeckCommand::iter().map(|cmd| InlineKeyboardButton::callback(cmd.as_ref(), cmd.as_ref()))
     }
 
@@ -113,7 +116,7 @@ impl CommandExt for DeckCommand {
 }
 
 impl CommandExt for UserCommand {
-    fn get_menu_items() -> impl Iterator<Item=InlineKeyboardButton> {
+    fn get_menu_items() -> impl Iterator<Item = InlineKeyboardButton> {
         UserCommand::iter().map(|cmd| InlineKeyboardButton::callback(cmd.as_ref(), cmd.as_ref()))
     }
 
@@ -127,7 +130,7 @@ impl CommandExt for UserCommand {
 }
 
 impl CommandExt for CardCommand {
-    fn get_menu_items() -> impl Iterator<Item=InlineKeyboardButton> {
+    fn get_menu_items() -> impl Iterator<Item = InlineKeyboardButton> {
         CardCommand::iter().map(|cmd| InlineKeyboardButton::callback(cmd.as_ref(), cmd.as_ref()))
     }
 
@@ -141,7 +144,7 @@ impl CommandExt for CardCommand {
 }
 
 impl CommandExt for CardGroupCommand {
-    fn get_menu_items() -> impl Iterator<Item=InlineKeyboardButton> {
+    fn get_menu_items() -> impl Iterator<Item = InlineKeyboardButton> {
         CardGroupCommand::iter()
             .map(|cmd| InlineKeyboardButton::callback(cmd.as_ref(), cmd.as_ref()))
     }
@@ -156,7 +159,7 @@ impl CommandExt for CardGroupCommand {
 }
 
 impl CommandExt for TagCommand {
-    fn get_menu_items() -> impl Iterator<Item=InlineKeyboardButton> {
+    fn get_menu_items() -> impl Iterator<Item = InlineKeyboardButton> {
         TagCommand::iter().map(|cmd| InlineKeyboardButton::callback(cmd.as_ref(), cmd.as_ref()))
     }
 

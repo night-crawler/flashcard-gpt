@@ -7,12 +7,10 @@ use crate::{patch_state, FlashGptDialogue};
 use anyhow::anyhow;
 
 use flashcard_gpt_core::dto::card::CreateCardDto;
-use flashcard_gpt_core::reexports::trace::info;
 use std::sync::Arc;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
-use teloxide::prelude::{DependencyMap, Requester, Update};
-use teloxide::Bot;
+use teloxide::prelude::{DependencyMap, Update};
 
 pub fn card_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let card_command_handler = teloxide::filter_command::<CardCommand, _>().branch(
@@ -46,18 +44,16 @@ pub fn card_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
     card_message_handler
 }
 
-pub async fn handle_create_card(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
-    let state = dialogue.get_or_default().await?;
-    info!(?state, "Handling command in state");
-
-    bot.send_message(
-        dialogue.chat_id(),
-        "You are creating a new card.\nUse /cancel to exit and /next to skip the step.\nEnter the title of the card:",
-    )
+pub async fn handle_create_card(manager: ChatManager) -> anyhow::Result<()> {
+    manager
+        .send_message(
+            "You are creating a new card.\nUse /cancel to exit and /next to skip the step.",
+        )
         .await?;
-    dialogue
-        .update(State::ReceiveCardTitle(StateFields::default_card()))
+    manager
+        .update_state(State::ReceiveCardTitle(StateFields::default()))
         .await?;
+    manager.send_state_and_prompt().await?;
     Ok(())
 }
 
@@ -69,7 +65,7 @@ async fn receive_card_title(manager: ChatManager) -> anyhow::Result<()> {
     let fields = patch_state!(
         manager,
         StateFields::Card { title },
-        |title: &mut Option<Arc<str>>| { title.replace(Arc::from(next_title)) }
+        |title: &mut Option<Arc<str>>| { title.replace(next_title) }
     );
 
     manager
@@ -89,7 +85,7 @@ async fn receive_card_front(manager: ChatManager) -> anyhow::Result<()> {
     let fields = patch_state!(
         manager,
         StateFields::Card { front },
-        |front: &mut Option<Arc<str>>| { front.replace(Arc::from(next_front)) }
+        |front: &mut Option<Arc<str>>| { front.replace(next_front) }
     );
     manager.update_state(State::ReceiveCardBack(fields)).await?;
     manager.send_state_and_prompt().await?;
@@ -105,7 +101,7 @@ async fn receive_card_back(manager: ChatManager) -> anyhow::Result<()> {
     let fields = patch_state!(manager, StateFields::Card { back }, |back: &mut Option<
         Arc<str>,
     >| {
-        back.replace(Arc::from(next_back))
+        back.replace(next_back)
     });
 
     manager
@@ -183,10 +179,9 @@ async fn receive_card_tags(manager: ChatManager) -> anyhow::Result<()> {
     >| {
         tags.extend(next_tags)
     });
-    manager
-        .update_state(State::ReceiveCardConfirm(fields))
-        .await?;
+    manager.update_state(State::ReceiveCardTags(fields)).await?;
     manager.send_state_and_prompt().await?;
+    manager.send_tag_menu().await?;
 
     Ok(())
 }

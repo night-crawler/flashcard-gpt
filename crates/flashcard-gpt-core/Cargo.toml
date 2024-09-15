@@ -12,7 +12,7 @@ surrealdb-beta = { version = "2.0.0" }
 serde = { version = "1", features = ["derive", "rc"] }
 tokio = { version = "1.40", features = ["full"] }
 chrono = { version = "0.4", features = ["default", "serde"] }
-chrono-tz = { version = "0.9", features = ["default", "serde"] }
+chrono-tz = { version = "0.10", features = ["default", "serde"] }
 humantime = "2.1"
 humantime-serde = "1.1"
 thiserror = "1"

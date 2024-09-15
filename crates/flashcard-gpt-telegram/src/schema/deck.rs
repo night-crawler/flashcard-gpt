@@ -7,12 +7,11 @@ use crate::{patch_state, FlashGptDialogue};
 use anyhow::anyhow;
 use flashcard_gpt_core::dto::deck::{CreateDeckDto, Settings};
 use flashcard_gpt_core::reexports::db::sql::Thing;
-use flashcard_gpt_core::reexports::trace::info;
 use std::sync::Arc;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
-use teloxide::prelude::{DependencyMap, Message, Requester, Update};
-use teloxide::Bot;
+use teloxide::prelude::{DependencyMap, Message, Update};
+use crate::schema::root::cancel;
 
 pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let deck_command_handler = teloxide::filter_command::<DeckCommand, _>().branch(
@@ -22,12 +21,17 @@ pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
 
     let deck_message_handler = Update::filter_message()
         .branch(deck_command_handler)
+        .branch(
+            teloxide::filter_command::<DeckCommand, _>()
+                .branch(case![DeckCommand::Cancel].endpoint(cancel)),
+        )
         .branch(case![State::ReceiveDeckTitle(fields)].endpoint(receive_deck_title))
         .branch(
             case![State::ReceiveDeckTags(fields)]
                 .branch(
                     teloxide::filter_command::<DeckCommand, _>()
                         .branch(case![DeckCommand::Next].endpoint(receive_next)),
+                    
                 )
                 .endpoint(receive_deck_tags),
         )
@@ -58,18 +62,16 @@ pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
     deck_message_handler
 }
 
-pub async fn handle_create_deck(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
-    let state = dialogue.get_or_default().await?;
-    info!(?state, "Handling command in state");
-
-    bot.send_message(
-        dialogue.chat_id(),
-        "You are creating a new deck.\nUse /cancel to exit and /next to skip the step.\nEnter the title of the deck:",
-    )
+pub async fn handle_create_deck(manager: ChatManager) -> anyhow::Result<()> {
+    manager
+        .send_message(
+            "You are creating a new deck.\nUse /cancel to exit and /next to skip the step.",
+        )
         .await?;
-    dialogue
-        .update(State::ReceiveDeckTitle(StateFields::default_deck()))
+    manager
+        .update_state(State::ReceiveDeckTitle(StateFields::default_deck()))
         .await?;
+    manager.send_state_and_prompt().await?;
     Ok(())
 }
 
@@ -164,7 +166,8 @@ async fn create_deck(
         description,
         parent,
         daily_limit,
-    } = manager.get_state().await?.take_fields() else {
+    } = manager.get_state().await?.take_fields()
+    else {
         manager.send_invalid_input().await?;
         return Ok(());
     };
@@ -186,8 +189,7 @@ async fn create_deck(
         .map(|tag| tag.id)
         .collect();
 
-    let title = title
-        .ok_or_else(|| anyhow!("Title was not provided"))?;
+    let title = title.ok_or_else(|| anyhow!("Title was not provided"))?;
 
     let deck = repositories
         .decks
@@ -197,8 +199,7 @@ async fn create_deck(
             parent,
             user: user_id,
             tags,
-            settings: daily_limit
-                .map(|limit| Settings { daily_limit: limit }),
+            settings: daily_limit.map(|limit| Settings { daily_limit: limit }),
         })
         .await?;
 

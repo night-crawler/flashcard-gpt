@@ -1,24 +1,21 @@
 use crate::chat_manager::ChatManager;
-use crate::command::{CardCommand, CardGroupCommand, CommandExt, DeckCommand, RootCommand, TagCommand, UserCommand};
-use crate::db::repositories::Repositories;
-use crate::ext::binding::BindingExt;
-use crate::ext::bot::BotExt;
-use crate::ext::dialogue::DialogueExt;
+use crate::command::{
+    CardCommand, CardGroupCommand, CommandExt, DeckCommand, RootCommand, TagCommand, UserCommand,
+};
 use crate::schema::deck::handle_create_deck;
 use crate::state::{FlashGptDialogue, State, StateFields};
-use flashcard_gpt_core::reexports::trace::{error, info};
-use std::str::FromStr;
 use anyhow::bail;
+use std::str::FromStr;
+use teloxide::adaptors::DefaultParseMode;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
-use teloxide::prelude::{
-    CallbackQuery, DependencyMap, InlineQuery, Message, Request, Requester, Update,
-};
+use teloxide::prelude::{CallbackQuery, DependencyMap, InlineQuery, Request, Requester, Update};
 use teloxide::types::{
     InlineQueryResult, InlineQueryResultArticle, InputMessageContent, InputMessageContentText,
 };
 use teloxide::utils::command::BotCommands;
 use teloxide::Bot;
+use tracing::{error, info};
 
 pub fn root_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let root_command_handler = teloxide::filter_command::<RootCommand, _>()
@@ -30,7 +27,10 @@ pub fn root_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
                 .branch(case![RootCommand::User].endpoint(handle_show_generic_menu::<UserCommand>))
                 .branch(case![RootCommand::Card].endpoint(handle_show_generic_menu::<CardCommand>))
                 .branch(case![RootCommand::Tag].endpoint(handle_show_generic_menu::<TagCommand>))
-                .branch(case![RootCommand::CardGroup].endpoint(handle_show_generic_menu::<CardGroupCommand>)),
+                .branch(
+                    case![RootCommand::CardGroup]
+                        .endpoint(handle_show_generic_menu::<CardGroupCommand>),
+                ),
         )
         .branch(case![RootCommand::Cancel].endpoint(cancel));
 
@@ -38,50 +38,37 @@ pub fn root_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
     root_message_handler
 }
 
-async fn handle_root_help(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
-    bot.send_help::<RootCommand>(dialogue.chat_id()).await?;
+async fn handle_root_help(manager: ChatManager) -> anyhow::Result<()> {
+    manager.send_help::<RootCommand>().await?;
     Ok(())
 }
 
-async fn cancel(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()> {
-    bot.send_message(dialogue.chat_id(), "Cancelling the dialogue.")
-        .await?;
-    dialogue.exit().await?;
+pub async fn cancel(manager: ChatManager) -> anyhow::Result<()> {
+    manager.send_message("Cancelling the dialogue.").await?;
     Ok(())
 }
 
-async fn handle_start(
-    bot: Bot,
-    dialogue: FlashGptDialogue,
-    msg: Message,
-    repositories: Repositories,
-) -> anyhow::Result<()> {
-    let _binding = repositories
-        .bindings
-        .get_or_create_telegram_binding(&msg)
-        .await?;
-    bot.delete_message(msg.chat.id, msg.id).await?;
-    bot.send_menu::<RootCommand>(dialogue.chat_id()).await?;
-    bot.set_my_commands(RootCommand::bot_commands()).await?;
-    dialogue.set_menu_state::<RootCommand>().await?;
+async fn handle_start(manager: ChatManager) -> anyhow::Result<()> {
+    manager.delete_current_message().await?;
+    manager.send_menu::<RootCommand>().await?;
+    manager.set_my_commands::<RootCommand>().await?;
+    manager.set_menu_state::<RootCommand>().await?;
     Ok(())
 }
 
-
-async fn handle_show_generic_menu<T>(bot: Bot, dialogue: FlashGptDialogue) -> anyhow::Result<()>
+async fn handle_show_generic_menu<T>(manager: ChatManager) -> anyhow::Result<()>
 where
     T: BotCommands + CommandExt,
 {
-    bot.send_menu::<T>(dialogue.chat_id()).await?;
-    bot.set_my_commands(T::bot_commands()).await?;
-    dialogue.set_menu_state::<T>().await?;
+    manager.send_menu::<T>().await?;
+    manager.set_my_commands::<T>().await?;
+    manager.set_menu_state::<T>().await?;
     Ok(())
 }
 
-
 pub(super) async fn receive_root_menu_item(
     manager: ChatManager,
-    bot: Bot,
+    bot: DefaultParseMode<Bot>,
     dialogue: FlashGptDialogue,
     callback_query: CallbackQuery,
 ) -> anyhow::Result<()> {
@@ -91,8 +78,10 @@ pub(super) async fn receive_root_menu_item(
             dialogue.chat_id(),
             "Didn't receive a correct menu item, resetting the dialogue",
         )
+        .await?;
+        dialogue
+            .update(State::InsideRootMenu(StateFields::Empty))
             .await?;
-        dialogue.update(State::InsideRootMenu(StateFields::Empty)).await?;
         return Ok(());
     };
 
@@ -108,28 +97,30 @@ pub(super) async fn receive_root_menu_item(
     info!(?state, menu_item, "Received a menu item");
 
     match (state, menu_item.as_str()) {
-        (None | Some(State::InsideRootMenu(_)), item) if let Ok(cmd) = RootCommand::from_str(item) => {
+        (None | Some(State::InsideRootMenu(_)), item)
+            if let Ok(cmd) = RootCommand::from_str(item) =>
+        {
             match cmd {
                 RootCommand::Deck => {
-                    handle_show_generic_menu::<DeckCommand>(bot, dialogue).await?;
+                    handle_show_generic_menu::<DeckCommand>(manager).await?;
                 }
                 RootCommand::User => {
-                    handle_show_generic_menu::<UserCommand>(bot, dialogue).await?;
+                    handle_show_generic_menu::<UserCommand>(manager).await?;
                 }
                 RootCommand::Card => {
-                    handle_show_generic_menu::<CardCommand>(bot, dialogue).await?;
+                    handle_show_generic_menu::<CardCommand>(manager).await?;
                 }
                 RootCommand::CardGroup => {
-                    handle_show_generic_menu::<CardGroupCommand>(bot, dialogue).await?;
+                    handle_show_generic_menu::<CardGroupCommand>(manager).await?;
                 }
                 RootCommand::Tag => {
-                    handle_show_generic_menu::<TagCommand>(bot, dialogue).await?;
+                    handle_show_generic_menu::<TagCommand>(manager).await?;
                 }
                 RootCommand::Help => {
-                    handle_root_help(bot, dialogue).await?;
+                    handle_root_help(manager).await?;
                 }
                 RootCommand::Cancel => {
-                    cancel(bot, dialogue).await?;
+                    cancel(manager).await?;
                 }
                 RootCommand::Start => {
                     // noop
@@ -139,7 +130,7 @@ pub(super) async fn receive_root_menu_item(
         (Some(State::InsideDeckMenu(_)), item) if let Ok(cmd) = DeckCommand::from_str(item) => {
             match cmd {
                 DeckCommand::Create => {
-                    handle_create_deck(bot, dialogue).await?;
+                    handle_create_deck(manager).await?;
                 }
                 _ => {
                     bot.send_message(dialogue.chat_id(), "Not implemented yet")
@@ -156,16 +147,14 @@ pub(super) async fn receive_root_menu_item(
             manager.update_state(State::ReceiveDeckTags(fields)).await?;
             manager.send_tag_menu().await?;
         }
-        (
-            Some(State::ReceiveDeckParent(mut fields)),
-            next_parent,
-        ) => {
+        (Some(State::ReceiveDeckParent(mut fields)), next_parent) => {
             if let StateFields::Deck { parent, .. } = &mut fields {
                 parent.replace(next_parent.into());
             } else {
                 bail!("Invalid state: {:?}", fields);
             }
-            manager.update_state(State::ReceiveDeckSettingsDailyLimit(fields))
+            manager
+                .update_state(State::ReceiveDeckSettingsDailyLimit(fields))
                 .await?;
             manager.send_state_and_prompt().await?;
         }
@@ -176,7 +165,7 @@ pub(super) async fn receive_root_menu_item(
 }
 
 pub async fn receive_inline_query(
-    bot: Bot,
+    bot: DefaultParseMode<Bot>,
     q: InlineQuery,
 ) -> anyhow::Result<()> {
     info!(?q, "Received an inline query");
@@ -207,12 +196,9 @@ pub async fn receive_inline_query(
             q.query
         ))),
     )
-        .description("DuckDuckGo Search")
-        .thumbnail_url(
-            "https://duckduckgo.com/assets/logo_header.v108.png"
-                .parse()?,
-        )
-        .url("https://duckduckgo.com/about".parse()?); // Note: This is the url that will open if they click the thumbnail
+    .description("DuckDuckGo Search")
+    .thumbnail_url("https://duckduckgo.com/assets/logo_header.v108.png".parse()?)
+    .url("https://duckduckgo.com/about".parse()?); // Note: This is the url that will open if they click the thumbnail
 
     let results = vec![
         InlineQueryResult::Article(google_search),

@@ -3,7 +3,6 @@ use crate::ext::menu_repr::IteratorMenuReprExt;
 use flashcard_gpt_core::dto::binding::BindingDto;
 use flashcard_gpt_core::dto::tag::TagDto;
 use flashcard_gpt_core::error::CoreError;
-use flashcard_gpt_core::reexports;
 use flashcard_gpt_core::reexports::db::engine::remote::ws::Client;
 use flashcard_gpt_core::reexports::db::sql::Thing;
 use flashcard_gpt_core::reexports::db::Surreal;
@@ -14,6 +13,7 @@ use flashcard_gpt_core::repo::tag::TagRepo;
 use flashcard_gpt_core::repo::user::UserRepo;
 use std::sync::Arc;
 use teloxide::types::InlineKeyboardMarkup;
+use tracing::Span;
 
 #[derive(Debug, Clone)]
 pub struct Repositories {
@@ -25,7 +25,7 @@ pub struct Repositories {
 }
 
 impl Repositories {
-    pub fn new(db: Surreal<Client>, span: reexports::trace::Span) -> Self {
+    pub fn new(db: Surreal<Client>, span: Span) -> Self {
         Self {
             tags: TagRepo::new_tag(db.clone(), span.clone(), true),
             decks: DeckRepo::new_deck(db.clone(), span.clone(), true),

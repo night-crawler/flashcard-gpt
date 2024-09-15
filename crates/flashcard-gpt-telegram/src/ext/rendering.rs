@@ -29,8 +29,3 @@ impl<T: fmt::Display> VecDisplayExt for Vec<T> {
         }
     }
 }
-
-
-pub trait MarkdownExt {
-    fn to_markdown(&self) -> String;
-}
