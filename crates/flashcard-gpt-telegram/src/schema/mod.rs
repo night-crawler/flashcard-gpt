@@ -1,7 +1,6 @@
 use crate::chat_manager::ChatManager;
 use crate::db::repositories::Repositories;
 use crate::ext::binding::BindingEntity;
-use crate::ext::bot::BotExt;
 use crate::schema::deck::deck_schema;
 use crate::schema::root::{receive_inline_query, receive_root_menu_item, root_schema};
 use crate::state::{FlashGptDialogue, State};
@@ -13,13 +12,13 @@ use teloxide::dispatching::{dialogue, UpdateFilterExt, UpdateHandler};
 use teloxide::prelude::{Message, Requester, Update};
 use teloxide::types::UpdateKind;
 use teloxide::{dptree, Bot};
+use crate::schema::card::card_schema;
 
-pub mod deck;
-pub mod root;
+mod deck;
+mod root;
+mod card;
 
 pub fn schema() -> UpdateHandler<anyhow::Error> {
-    let root_message_handler = root_schema();
-    let deck_message_handler = deck_schema();
     let root_menu_handler = Update::filter_callback_query().endpoint(receive_root_menu_item);
     let inline_query_handler =
         Update::filter_inline_query().branch(dptree::endpoint(receive_inline_query));
@@ -27,8 +26,9 @@ pub fn schema() -> UpdateHandler<anyhow::Error> {
     let main_branch = dialogue::enter::<Update, InMemStorage<State>, State, _>()
         .filter_map_async(create_binding)
         .map(init_chat_manager)
-        .branch(deck_message_handler)
-        .branch(root_message_handler)
+        .branch(card_schema())
+        .branch(deck_schema())
+        .branch(root_schema())
         .branch(root_menu_handler)
         .branch(Update::filter_message().branch(dptree::endpoint(invalid_state)));
 
@@ -78,13 +78,6 @@ async fn receive_next(
     manager: ChatManager,
 ) -> anyhow::Result<()> {
     match manager.get_state().await? {
-        State::InsideRootMenu => {}
-        State::InsideUserMenu => {}
-        State::InsideDeckMenu => {}
-        State::InsideCardMenu => {}
-        State::InsideCardGroupMenu => {}
-        State::InsideTagMenu => {}
-        State::ReceiveDeckTitle(_) => {}
         State::ReceiveDeckTags(fields) => {
             let next_state = State::ReceiveDeckDescription(fields);
             manager.update_state(next_state).await?;
@@ -101,7 +94,9 @@ async fn receive_next(
             manager.update_state(next_state).await?;
             manager.send_state_and_prompt().await?;
         }
-        State::ReceiveDeckConfirm { .. } => {}
+        _ => {
+            manager.send_invalid_input().await?;
+        }
     }
 
     Ok(())

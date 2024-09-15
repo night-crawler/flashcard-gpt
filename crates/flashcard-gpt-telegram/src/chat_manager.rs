@@ -1,10 +1,11 @@
-use crate::state::{ModifyDeckFields, State, StateDescription};
+use std::str::FromStr;
+use crate::state::{State, StateDescription};
 
 use crate::db::repositories::Repositories;
 use crate::ext::dialogue::DialogueExt;
 use crate::state::FlashGptDialogue;
 use flashcard_gpt_core::dto::binding::BindingDto;
-use flashcard_gpt_core::reexports::trace::Span;
+use flashcard_gpt_core::reexports::trace::{warn, Span};
 use std::sync::Arc;
 use teloxide::payloads::SendMessageSetters;
 use teloxide::prelude::{Message, Requester};
@@ -26,7 +27,7 @@ impl ChatManager {
         self.dialogue.update(next_state).await?;
         Ok(desc)
     }
-    
+
     pub async fn send_message(&self, text: impl Into<String>) -> anyhow::Result<()> {
         self.bot.send_message(self.dialogue.chat_id(), text).await?;
         Ok(())
@@ -37,7 +38,10 @@ impl ChatManager {
     }
 
     pub async fn get_description(&self) -> anyhow::Result<StateDescription> {
-        Ok(self.get_state().await?.get_state_description(self.message.as_deref()))
+        Ok(self
+            .get_state()
+            .await?
+            .get_state_description(self.message.as_deref()))
     }
 
     pub async fn send_invalid_input(&self) -> anyhow::Result<()> {
@@ -94,25 +98,26 @@ impl ChatManager {
 
         Ok(())
     }
-
-    pub async fn get_modify_deck_fields(&self) -> anyhow::Result<ModifyDeckFields> {
-        let state = self.get_state().await?;
-
-        let fields = match state {
-            State::ReceiveDeckTitle(fields) => fields,
-            State::ReceiveDeckTags(fields) => fields,
-            State::ReceiveDeckDescription(fields) => fields,
-            State::ReceiveDeckParent(fields) => fields,
-            State::ReceiveDeckSettingsDailyLimit(fields) => fields,
-            State::ReceiveDeckConfirm(fields) => fields,
-            _ => {
-                anyhow::bail!(
-                    "Tried to extract ModifyDeckFields from an invalid state: {:?}",
-                    state
-                );
+    
+    pub fn parse_comma_separated_values(&self) -> Option<impl Iterator<Item=Arc<str>> + use<'_>> {
+        if let Some(message) = self.message.as_deref() && let Some(text) = message.text() {
+            return Some(text.split(',').map(str::trim).filter(|s| !s.is_empty()).map(Arc::from));
+        } 
+        
+        None
+    }
+    
+    pub fn parse_text(&self) -> Option<Arc<str>> {
+        self.message.as_deref().and_then(|message| message.text().map(Arc::from))
+    }
+    
+    pub fn parse_integer<T> (&self) -> Option<T> where T: FromStr, <T as FromStr>::Err: std::fmt::Debug {
+        match self.message.as_deref().and_then(|message| message.text().map(|text| text.parse::<T>()))? {
+            Ok(result) => Some(result),
+            Err(err) => {
+                warn!(?err, "Failed to parse integer");
+                None
             }
-        };
-
-        Ok(fields)
+        }
     }
 }

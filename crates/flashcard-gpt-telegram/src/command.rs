@@ -1,4 +1,4 @@
-use crate::state::State;
+use crate::state::{State, StateFields};
 use strum::IntoEnumIterator;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
 use teloxide::macros::BotCommands;
@@ -62,6 +62,12 @@ pub enum UserCommand {
 pub enum CardCommand {
     /// Show all cards
     List,
+    
+    /// Create a new card
+    Create,
+
+    /// Continue to the next state
+    Next,
 }
 
 #[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]
@@ -88,7 +94,7 @@ impl CommandExt for RootCommand {
     }
 
     fn get_corresponding_state() -> State {
-        State::InsideRootMenu
+        State::InsideRootMenu(StateFields::Empty)
     }
 }
 
@@ -102,7 +108,7 @@ impl CommandExt for DeckCommand {
     }
 
     fn get_corresponding_state() -> State {
-        State::InsideDeckMenu
+        State::InsideDeckMenu(StateFields::Empty)
     }
 }
 
@@ -116,7 +122,7 @@ impl CommandExt for UserCommand {
     }
 
     fn get_corresponding_state() -> State {
-        State::InsideUserMenu
+        State::InsideUserMenu(StateFields::Empty)
     }
 }
 
@@ -130,7 +136,7 @@ impl CommandExt for CardCommand {
     }
 
     fn get_corresponding_state() -> State {
-        State::InsideCardMenu
+        State::InsideCardMenu(StateFields::Empty)
     }
 }
 
@@ -145,7 +151,7 @@ impl CommandExt for CardGroupCommand {
     }
 
     fn get_corresponding_state() -> State {
-        State::InsideCardGroupMenu
+        State::InsideCardGroupMenu(StateFields::Empty)
     }
 }
 
@@ -159,6 +165,6 @@ impl CommandExt for TagCommand {
     }
 
     fn get_corresponding_state() -> State {
-        State::InsideTagMenu
+        State::InsideTagMenu(StateFields::Empty)
     }
 }

@@ -5,11 +5,10 @@ use crate::ext::binding::BindingExt;
 use crate::ext::bot::BotExt;
 use crate::ext::dialogue::DialogueExt;
 use crate::schema::deck::handle_create_deck;
-use crate::state::{FlashGptDialogue, State};
-use flashcard_gpt_core::dto::binding::BindingDto;
+use crate::state::{FlashGptDialogue, State, StateFields};
 use flashcard_gpt_core::reexports::trace::{error, info};
 use std::str::FromStr;
-use std::sync::Arc;
+use anyhow::bail;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{
@@ -24,7 +23,7 @@ use teloxide::Bot;
 pub fn root_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let root_command_handler = teloxide::filter_command::<RootCommand, _>()
         .branch(
-            case![State::InsideRootMenu]
+            case![State::InsideRootMenu(fields)]
                 .branch(case![RootCommand::Help].endpoint(handle_root_help))
                 .branch(case![RootCommand::Start].endpoint(handle_start))
                 .branch(case![RootCommand::Deck].endpoint(handle_show_generic_menu::<DeckCommand>))
@@ -93,7 +92,7 @@ pub(super) async fn receive_root_menu_item(
             "Didn't receive a correct menu item, resetting the dialogue",
         )
             .await?;
-        dialogue.update(State::InsideRootMenu).await?;
+        dialogue.update(State::InsideRootMenu(StateFields::Empty)).await?;
         return Ok(());
     };
 
@@ -109,7 +108,7 @@ pub(super) async fn receive_root_menu_item(
     info!(?state, menu_item, "Received a menu item");
 
     match (state, menu_item.as_str()) {
-        (None | Some(State::InsideRootMenu), item) if let Ok(cmd) = RootCommand::from_str(item) => {
+        (None | Some(State::InsideRootMenu(_)), item) if let Ok(cmd) = RootCommand::from_str(item) => {
             match cmd {
                 RootCommand::Deck => {
                     handle_show_generic_menu::<DeckCommand>(bot, dialogue).await?;
@@ -137,7 +136,7 @@ pub(super) async fn receive_root_menu_item(
                 }
             }
         }
-        (Some(State::InsideDeckMenu), item) if let Ok(cmd) = DeckCommand::from_str(item) => {
+        (Some(State::InsideDeckMenu(_)), item) if let Ok(cmd) = DeckCommand::from_str(item) => {
             match cmd {
                 DeckCommand::Create => {
                     handle_create_deck(bot, dialogue).await?;
@@ -149,21 +148,26 @@ pub(super) async fn receive_root_menu_item(
             }
         }
         (Some(State::ReceiveDeckTags(mut fields)), tag) => {
-            fields.tags.push(tag.into());
-            let next_state = State::ReceiveDeckTags(fields);
-            manager.update_state(next_state).await?;
+            if let StateFields::Deck { tags, .. } = &mut fields {
+                tags.push(tag.into());
+            } else {
+                bail!("Invalid state: {:?}", fields);
+            }
+            manager.update_state(State::ReceiveDeckTags(fields)).await?;
             manager.send_tag_menu().await?;
         }
         (
             Some(State::ReceiveDeckParent(mut fields)),
-            parent,
+            next_parent,
         ) => {
-            bot.send_message(dialogue.chat_id(), "Deck settings / daily limit:")
+            if let StateFields::Deck { parent, .. } = &mut fields {
+                parent.replace(next_parent.into());
+            } else {
+                bail!("Invalid state: {:?}", fields);
+            }
+            manager.update_state(State::ReceiveDeckSettingsDailyLimit(fields))
                 .await?;
-            fields.parent = Some(parent.into());
-            dialogue
-                .update(State::ReceiveDeckSettingsDailyLimit(fields))
-                .await?;
+            manager.send_state_and_prompt().await?;
         }
         (_, _) => {}
     }

@@ -9,7 +9,7 @@ pub struct BindingDto {
     pub id: Thing,
     pub source_id: Arc<str>,
     pub type_name: Arc<str>,
-    pub data: Option<serde_json::Value>,
+    pub data: Option<Arc<serde_json::Value>>,
     pub user: Arc<User>,
     pub time: Time,
 }

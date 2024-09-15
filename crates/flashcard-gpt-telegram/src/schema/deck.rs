@@ -2,8 +2,8 @@ use crate::chat_manager::ChatManager;
 use crate::command::DeckCommand;
 use crate::db::repositories::Repositories;
 use crate::schema::receive_next;
-use crate::state::{ModifyDeckFields, State};
-use crate::FlashGptDialogue;
+use crate::state::{State, StateFields};
+use crate::{patch_state, FlashGptDialogue};
 use anyhow::anyhow;
 use flashcard_gpt_core::dto::deck::{CreateDeckDto, Settings};
 use flashcard_gpt_core::reexports::db::sql::Thing;
@@ -16,7 +16,7 @@ use teloxide::Bot;
 
 pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let deck_command_handler = teloxide::filter_command::<DeckCommand, _>().branch(
-        case![State::InsideDeckMenu]
+        case![State::InsideDeckMenu(fields)]
             .branch(case![DeckCommand::Create].endpoint(handle_create_deck)),
     );
 
@@ -68,57 +68,61 @@ pub async fn handle_create_deck(bot: Bot, dialogue: FlashGptDialogue) -> anyhow:
     )
         .await?;
     dialogue
-        .update(State::ReceiveDeckTitle(ModifyDeckFields::default()))
+        .update(State::ReceiveDeckTitle(StateFields::default_deck()))
         .await?;
     Ok(())
 }
 
 async fn receive_deck_title(manager: ChatManager, msg: Message) -> anyhow::Result<()> {
-    let Some(title) = msg.text().map(ToOwned::to_owned) else {
+    let Some(next_title) = msg.text().map(ToOwned::to_owned) else {
         manager.send_invalid_input().await?;
         return Ok(());
     };
 
-    let mut fields = manager.get_modify_deck_fields().await?;
-    fields.title = Some(Arc::from(title));
-    manager.update_state(State::ReceiveDeckTags(fields)).await?;
+    let fields = patch_state!(
+        manager,
+        StateFields::Deck { title },
+        |title: &mut Option<Arc<str>>| {
+            title.replace(Arc::from(next_title));
+        }
+    );
 
+    manager.update_state(State::ReceiveDeckTags(fields)).await?;
     manager.send_tag_menu().await?;
 
     Ok(())
 }
 
-async fn receive_deck_tags(manager: ChatManager, msg: Message) -> anyhow::Result<()> {
-    let Some(new_tags) = msg.text().map(|s| {
-        s.split(',')
-            .map(|s| s.trim().to_owned())
-            .filter(|s| !s.is_empty())
-            .map(Arc::from)
-            .collect::<Vec<_>>()
-    }) else {
+async fn receive_deck_tags(manager: ChatManager) -> anyhow::Result<()> {
+    let Some(new_tags) = manager.parse_comma_separated_values() else {
         manager.send_invalid_input().await?;
         return Ok(());
     };
 
-    let mut fields = manager.get_modify_deck_fields().await?;
-    fields.tags.extend(new_tags.clone());
+    let fields = patch_state!(manager, StateFields::Deck { tags }, |tags: &mut Vec<
+        Arc<str>,
+    >| {
+        tags.extend(new_tags)
+    });
     manager.update_state(State::ReceiveDeckTags(fields)).await?;
     manager.send_tag_menu().await?;
     Ok(())
 }
 
-async fn receive_deck_description(manager: ChatManager, msg: Message) -> anyhow::Result<()> {
-    let Some(description) = msg.text().map(ToOwned::to_owned) else {
+async fn receive_deck_description(manager: ChatManager) -> anyhow::Result<()> {
+    let Some(next_description) = manager.parse_text() else {
         manager.send_invalid_input().await?;
         return Ok(());
     };
 
-    let mut fields = manager.get_modify_deck_fields().await?;
-    fields.description = Some(Arc::from(description));
+    let fields = patch_state!(
+        manager,
+        StateFields::Deck { description },
+        |description: &mut Option<Arc<str>>| { description.replace(next_description) }
+    );
     manager
         .update_state(State::ReceiveDeckParent(fields))
         .await?;
-
     manager.send_deck_menu().await?;
 
     Ok(())
@@ -129,21 +133,21 @@ async fn receive_deck_parent(manager: ChatManager) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn receive_deck_settings(manager: ChatManager, msg: Message) -> anyhow::Result<()> {
-    let Some(Ok(daily_limit)) = msg
-        .text()
-        .map(ToOwned::to_owned)
-        .map(|s| s.parse::<usize>())
-    else {
+async fn receive_deck_settings(manager: ChatManager) -> anyhow::Result<()> {
+    let Some(next_daily_limit) = manager.parse_integer::<usize>() else {
         manager.send_invalid_input().await?;
         return Ok(());
     };
-    
-    let fields = ModifyDeckFields {
-        daily_limit: Some(daily_limit),
-        ..manager.get_modify_deck_fields().await?
-    };
-    manager.update_state(State::ReceiveDeckConfirm(fields)).await?;
+
+    let fields = patch_state!(
+        manager,
+        StateFields::Deck { daily_limit },
+        |daily_limit: &mut Option<usize>| { daily_limit.replace(next_daily_limit) }
+    );
+
+    manager
+        .update_state(State::ReceiveDeckConfirm(fields))
+        .await?;
     manager.send_state_and_prompt().await?;
     Ok(())
 }
@@ -153,9 +157,19 @@ async fn create_deck(
     dialogue: FlashGptDialogue,
     repositories: Repositories,
 ) -> anyhow::Result<()> {
-    let fields = manager.get_modify_deck_fields().await?;
+    let StateFields::Deck {
+        id: _,
+        title,
+        tags,
+        description,
+        parent,
+        daily_limit,
+    } = manager.get_state().await?.take_fields() else {
+        manager.send_invalid_input().await?;
+        return Ok(());
+    };
 
-    let parent = if let Some(parent) = fields.parent {
+    let parent = if let Some(parent) = parent {
         let parent =
             Thing::try_from(parent.as_ref()).map_err(|_| anyhow!("Failed to get parent by id"))?;
         repositories.decks.get_by_id(parent).await?.id.into()
@@ -166,26 +180,24 @@ async fn create_deck(
     let user_id = manager.binding.user.id.clone();
 
     let tags = repositories
-        .get_or_create_tags(user_id.clone(), fields.tags)
+        .get_or_create_tags(user_id.clone(), tags)
         .await?
         .into_iter()
         .map(|tag| tag.id)
         .collect();
 
-    let title = fields
-        .title
+    let title = title
         .ok_or_else(|| anyhow!("Title was not provided"))?;
 
     let deck = repositories
         .decks
         .create(CreateDeckDto {
             title,
-            description: fields.description,
+            description,
             parent,
             user: user_id,
             tags,
-            settings: fields
-                .daily_limit
+            settings: daily_limit
                 .map(|limit| Settings { daily_limit: limit }),
         })
         .await?;

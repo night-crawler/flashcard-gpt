@@ -14,12 +14,12 @@ pub struct Card {
     pub title: Arc<String>,
     pub front: Option<Arc<str>>,
     pub back: Option<Arc<str>>,
-    pub data: Option<Value>,
+    pub data: Option<Arc<Value>>,
     pub hints: Vec<Arc<str>>,
-    pub difficulty: i32,
-    pub importance: i32,
+    pub difficulty: u8,
+    pub importance: u8,
     pub tags: HashSet<Arc<TagDto>>,
-    pub time: Option<Time>,
+    pub time: Option<Time>, 
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -29,8 +29,8 @@ pub struct CreateCardDto {
     pub front: Option<Arc<str>>,
     pub back: Option<Arc<str>>,
     pub hints: Vec<Arc<str>>,
-    pub difficulty: i32,
-    pub importance: i32,
-    pub data: Option<Value>,
+    pub difficulty: u8,
+    pub importance: u8,
+    pub data: Option<Arc<Value>>,
     pub tags: HashSet<Thing>,
 }
