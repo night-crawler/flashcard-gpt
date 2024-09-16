@@ -1,13 +1,21 @@
+use crate::dto::card::{CardDto, CreateCardDto};
+use crate::dto::deck::{CreateDeckDto, DeckDto, DeckSettings};
+use crate::dto::tag::{CreateTagDto, TagDto};
 use crate::dto::user::{RegisterUserDto, User};
 use crate::error::CoreError;
 use crate::ext::mutex::MutexExt;
+use crate::repo::card::CardRepo;
+use crate::repo::deck::DeckRepo;
+use crate::repo::tag::TagRepo;
 use crate::repo::user::UserRepo;
 use crate::tests::surreal_test_container::{SurrealDbTestContainer, SURREALDB_PORT};
 use crate::tests::TEST_DB;
+use bon::builder;
 use log::info;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
+use surrealdb::sql::Thing;
 use surrealdb::Surreal;
 use testcontainers::runners::AsyncRunner;
 use testcontainers::ContainerAsync;
@@ -90,4 +98,105 @@ pub async fn create_user(name: &str) -> Result<User, CoreError> {
         .await?;
 
     Ok(user)
+}
+
+#[builder]
+pub async fn create_tag<U>(user: U, name: &str, slug: Option<&str>) -> Result<TagDto, CoreError>
+where
+    U: Into<Thing>,
+{
+    let db = TEST_DB.get_client().await?;
+    let repo = TagRepo::new_tag(db, span!(Level::INFO, "tag_create"), false);
+
+    repo.create(CreateTagDto {
+        name: Arc::from(name),
+        slug: Arc::from(slug.unwrap_or(name)),
+        user: user.into(),
+    })
+    .await
+}
+
+#[builder]
+pub async fn create_deck<U, Title, Tag, TagIter>(
+    user: U,
+    title: Title,
+    parent: Option<Thing>,
+    settings: Option<DeckSettings>,
+    tags: Option<TagIter>,
+    
+) -> Result<DeckDto, CoreError>
+where
+    TagIter: IntoIterator<Item = Tag>,
+    Tag: Into<Thing>,
+    U: Into<Thing>,
+    Title: Into<Arc<str>>
+
+{
+    let db = TEST_DB.get_client().await?;
+    let repo = DeckRepo::new_deck(db, span!(Level::INFO, "deck_create"), false);
+
+    let tags = if let Some(tags) = tags {
+        tags.into_iter().map(|t| t.into()).collect()
+    } else {
+        vec![]
+    };
+
+    let title = title.into();
+    
+    repo.create(CreateDeckDto {
+        description: Some(Arc::from(format!("description for {}", title.clone()))),
+        parent: parent.map(Into::into),
+        settings,
+        user: user.into(),
+        title,
+        tags,
+    })
+    .await
+}
+
+#[builder]
+pub async fn create_card<U, Tag, TagIter, Title>(
+    user: U,
+    title: Title,
+    front: Option<&str>,
+    back: Option<&str>,
+    hints: Option<Vec<&str>>,
+    difficulty: Option<u8>,
+    importance: Option<u8>,
+    tags: Option<TagIter>,
+) -> Result<CardDto, CoreError>
+where
+    TagIter: IntoIterator<Item = Tag>,
+    Tag: Into<Thing>,
+    U: Into<Thing>,
+    Title: Into<Arc<str>>
+{
+    let db = TEST_DB.get_client().await?;
+    let repo = CardRepo::new_card(db, span!(Level::INFO, "card_create"), false);
+
+    let tags = if let Some(tags) = tags {
+        tags.into_iter().map(|t| t.into()).collect()
+    } else {
+        vec![]
+    };
+
+    let hints = if let Some(hints) = hints {
+        hints.into_iter().map(Arc::from).collect()
+    } else {
+        vec![]
+    };
+    let title = title.into();
+
+    repo.create(CreateCardDto {
+        user: user.into(),
+        title: title.clone(),
+        front: front.map(Arc::from).or(Some(title.clone())),
+        back: back.map(Arc::from).or(Some(title.clone())),
+        hints,
+        difficulty: difficulty.unwrap_or(0),
+        importance: importance.unwrap_or(0),
+        data: None,
+        tags,
+    })
+    .await
 }

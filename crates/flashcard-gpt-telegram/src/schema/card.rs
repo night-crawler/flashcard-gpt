@@ -47,11 +47,11 @@ pub fn card_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
 pub async fn handle_create_card(manager: ChatManager) -> anyhow::Result<()> {
     manager
         .send_message(
-            "You are creating a new card.\nUse /cancel to exit and /next to skip the step.",
+            "You are creating a new card.\nUse /cancel to exit and /next to skip the step.\n",
         )
         .await?;
     manager
-        .update_state(State::ReceiveCardTitle(StateFields::default()))
+        .update_state(State::ReceiveCardTitle(StateFields::default_card()))
         .await?;
     manager.send_state_and_prompt().await?;
     Ok(())

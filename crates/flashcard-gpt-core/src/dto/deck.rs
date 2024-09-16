@@ -4,30 +4,44 @@ use crate::dto::user::User;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use surrealdb::sql::Thing;
+use bon::Builder;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Settings {
+#[derive(Debug, Serialize, Deserialize, Builder)]
+pub struct DeckSettings {
     pub daily_limit: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Builder)]
 pub struct DeckDto {
     pub id: Thing,
     pub description: Option<Arc<str>>,
     pub parent: Option<Thing>,
-    pub settings: Option<Settings>,
-    pub tags: Vec<TagDto>,
+    pub settings: Option<DeckSettings>,
+    pub tags: Vec<Arc<TagDto>>,
     pub time: Time,
     pub title: Arc<str>,
     pub user: User,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Builder)]
 pub struct CreateDeckDto {
     pub description: Option<Arc<str>>,
     pub parent: Option<Thing>,
-    pub settings: Option<Settings>,
+    pub settings: Option<DeckSettings>,
     pub tags: Vec<Thing>,
     pub title: Arc<str>,
     pub user: Thing,
+}
+
+
+impl From<DeckDto> for Thing {
+    fn from(value: DeckDto) -> Self {
+        value.id
+    }
+}
+
+impl From<&DeckDto> for Thing {
+    fn from(value: &DeckDto) -> Self {
+        value.id.clone()
+    }
 }

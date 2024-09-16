@@ -82,6 +82,11 @@ async fn receive_next(manager: ChatManager) -> anyhow::Result<()> {
             manager.update_state(next_state).await?;
             manager.send_state_and_prompt().await?;
         }
+        State::ReceiveCardTags(fields) => {
+            let next_state = State::ReceiveCardConfirm(fields);
+            manager.update_state(next_state).await?;
+            manager.send_state_and_prompt().await?;
+        }
         State::ReceiveDeckDescription { .. } => {}
         State::ReceiveDeckParent(fields) => {
             let next_state = State::ReceiveDeckSettingsDailyLimit(fields);

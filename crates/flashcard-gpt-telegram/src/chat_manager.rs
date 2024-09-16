@@ -12,7 +12,7 @@ use teloxide::adaptors::DefaultParseMode;
 use teloxide::payloads::SendMessageSetters;
 use teloxide::prelude::{Message, Requester};
 use teloxide::utils::command::BotCommands;
-use teloxide::Bot;
+use teloxide::{Bot, RequestError};
 use tracing::{warn, Span};
 
 #[derive(Debug, Clone)]
@@ -37,9 +37,8 @@ impl ChatManager {
         message = ?self.message,
         text = ?text,
     ))]
-    pub async fn send_message(&self, text: impl Into<String> + Debug) -> anyhow::Result<()> {
-        self.bot.send_message(self.dialogue.chat_id(), text).await?;
-        Ok(())
+    pub async fn send_message(&self, text: impl Into<String> + Debug) -> Result<Message, RequestError> {
+        self.bot.send_message(self.dialogue.chat_id(), text).await
     }
 
     pub async fn get_state(&self) -> anyhow::Result<State> {
@@ -134,7 +133,7 @@ impl ChatManager {
     pub fn parse_integer<T>(&self) -> Option<T>
     where
         T: FromStr,
-        <T as FromStr>::Err: std::fmt::Debug,
+        <T as FromStr>::Err: Debug,
     {
         match self
             .message

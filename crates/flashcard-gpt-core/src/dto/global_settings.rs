@@ -1,3 +1,4 @@
+use bon::Builder;
 use crate::dto::time::Time;
 use crate::dto::user::User;
 use crate::reexports::db::sql::Thing;
@@ -7,8 +8,8 @@ use humantime::parse_duration;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GlobalSettings {
+#[derive(Debug, Serialize, Deserialize, Builder)]
+pub struct GlobalSettingsDto {
     pub id: Thing,
     pub daily_limit: i32,
     pub time: Time,
@@ -62,6 +63,19 @@ where
     s.serialize(serializer)
 }
 
+impl From<GlobalSettingsDto> for Thing {
+    fn from(value: GlobalSettingsDto) -> Self {
+        value.id
+    }
+}
+
+impl From<&GlobalSettingsDto> for Thing {
+    fn from(value: &GlobalSettingsDto) -> Self {
+        value.id.clone()
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -75,7 +89,7 @@ mod tests {
             [Duration::minutes(30), Duration::hours(1)],
             [Duration::minutes(2), Duration::hours(3)],
         ];
-        let settings = GlobalSettings {
+        let settings = GlobalSettingsDto {
             id: Thing::from(("test_user", "aaa")),
             daily_limit: 100,
             time: Time::default(),
@@ -96,7 +110,7 @@ mod tests {
         assert!(serialized.contains("2m"));
         assert!(serialized.contains("3h"));
 
-        let deserialized: GlobalSettings = serde_json::from_str(&serialized)?;
+        let deserialized: GlobalSettingsDto = serde_json::from_str(&serialized)?;
         assert_eq!(deserialized.timetable[0][0], Duration::minutes(30));
         assert_eq!(deserialized.timetable[0][1], Duration::hours(1));
         assert_eq!(deserialized.timetable[1][0], Duration::minutes(2));

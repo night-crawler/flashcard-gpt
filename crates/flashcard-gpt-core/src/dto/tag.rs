@@ -1,9 +1,10 @@
 use crate::dto::time::Time;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use bon::Builder;
 use surrealdb::sql::Thing;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Builder)]
 pub struct TagDto {
     pub id: Thing,
     pub name: Arc<str>,
@@ -12,9 +13,22 @@ pub struct TagDto {
     pub time: Time,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Builder)]
 pub struct CreateTagDto {
     pub name: Arc<str>,
     pub slug: Arc<str>,
     pub user: Thing,
+}
+
+
+impl From<TagDto> for Thing {
+    fn from(value: TagDto) -> Self {
+        value.id
+    }
+}
+
+impl From<&TagDto> for Thing {
+    fn from(value: &TagDto) -> Self {
+        value.id.clone()
+    }
 }

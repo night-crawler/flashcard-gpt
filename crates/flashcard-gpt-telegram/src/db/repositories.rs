@@ -63,7 +63,7 @@ impl Repositories {
             .into_iter()
             .map(|tag| {
                 let slug = slug::slugify(&tag);
-                (Arc::from(tag), Arc::from(slug))
+                (tag, Arc::from(slug))
             })
             .collect();
 

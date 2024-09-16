@@ -147,6 +147,17 @@ pub(super) async fn receive_root_menu_item(
             manager.update_state(State::ReceiveDeckTags(fields)).await?;
             manager.send_tag_menu().await?;
         }
+
+        (Some(State::ReceiveCardTags(mut fields)), tag) => {
+            if let StateFields::Card { tags, .. } = &mut fields {
+                tags.push(tag.into());
+            } else {
+                bail!("Invalid state: {:?}", fields);
+            }
+            manager.update_state(State::ReceiveCardTags(fields)).await?;
+            manager.send_tag_menu().await?;
+        }
+        
         (Some(State::ReceiveDeckParent(mut fields)), next_parent) => {
             if let StateFields::Deck { parent, .. } = &mut fields {
                 parent.replace(next_parent.into());

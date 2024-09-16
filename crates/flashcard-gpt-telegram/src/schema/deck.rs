@@ -5,7 +5,7 @@ use crate::schema::receive_next;
 use crate::state::{State, StateFields};
 use crate::{patch_state, FlashGptDialogue};
 use anyhow::anyhow;
-use flashcard_gpt_core::dto::deck::{CreateDeckDto, Settings};
+use flashcard_gpt_core::dto::deck::{CreateDeckDto, DeckSettings};
 use flashcard_gpt_core::reexports::db::sql::Thing;
 use std::sync::Arc;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
@@ -65,7 +65,7 @@ pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
 pub async fn handle_create_deck(manager: ChatManager) -> anyhow::Result<()> {
     manager
         .send_message(
-            "You are creating a new deck.\nUse /cancel to exit and /next to skip the step.",
+            "You are creating a new deck.\nUse /cancel to exit and /next to skip the step.\n",
         )
         .await?;
     manager
@@ -199,7 +199,7 @@ async fn create_deck(
             parent,
             user: user_id,
             tags,
-            settings: daily_limit.map(|limit| Settings { daily_limit: limit }),
+            settings: daily_limit.map(|limit| DeckSettings { daily_limit: limit }),
         })
         .await?;
 

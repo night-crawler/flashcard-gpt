@@ -17,7 +17,7 @@ impl TagRepo {
 
     pub async fn get_or_create_tags(
         &self,
-        user_id: Thing,
+        user_id: impl Into<Thing>,
         tags: Vec<(Arc<str>, Arc<str>)>,
     ) -> Result<Vec<TagDto>, CoreError> {
         let query = format!(
@@ -31,7 +31,7 @@ impl TagRepo {
                     slug: $pair[1]
                 }};
             }};
-            select * from tag where slug in $slugs order by slug;
+            select * from tag where slug in $slugs && user=$user_id order by slug;
             {commit}
             "#,
             begin = self.begin_transaction_statement(),
@@ -41,7 +41,7 @@ impl TagRepo {
         let mut response = self
             .db
             .query(query)
-            .bind(("user_id", user_id))
+            .bind(("user_id", user_id.into()))
             .bind(("tag_pairs", tags))
             .await?;
 
@@ -98,7 +98,7 @@ mod tests {
     async fn test_get_or_create_tags() -> TestResult {
         let db = TEST_DB.get_client().await?;
         let repo = TagRepo::new_tag(db, span!(Level::INFO, "tag_create"), true);
-        let user = create_user("tag_create").await?;
+        let user = create_user("tag_create_22").await?;
 
         repo.create(CreateTagDto {
             user: user.id.clone(),
@@ -115,10 +115,10 @@ mod tests {
         let created_tags = repo
             .get_or_create_tags(user.id.clone(), tags.clone())
             .await?;
-        assert_eq!(created_tags.len(), 2);
+        assert_eq!(created_tags.len(), 2, "{created_tags:#?}");
 
         let created_tags = repo.get_or_create_tags(user.id.clone(), tags).await?;
-        assert_eq!(created_tags.len(), 2);
+        assert_eq!(created_tags.len(), 2, "{created_tags:#?}");
 
         Ok(())
     }

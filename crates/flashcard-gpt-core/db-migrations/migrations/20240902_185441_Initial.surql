@@ -24,10 +24,10 @@ DEFINE TABLE card TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select, create, update,
 
 DEFINE FIELD back ON card TYPE option<string> PERMISSIONS FULL;
 DEFINE FIELD data ON card FLEXIBLE TYPE option<object> PERMISSIONS FULL;
+DEFINE FIELD importance ON card TYPE int DEFAULT 0 ASSERT $value >= 0 AND $value <= 10 PERMISSIONS FULL;
 DEFINE FIELD difficulty ON card TYPE int DEFAULT 0 ASSERT $value >= 0 AND $value <= 10 PERMISSIONS FULL;
 DEFINE FIELD front ON card TYPE option<string> PERMISSIONS FULL;
 DEFINE FIELD hints ON card TYPE array<string> DEFAULT [] PERMISSIONS FULL;
-DEFINE FIELD importance ON card TYPE int DEFAULT 0 ASSERT $value >= 0 AND $value <= 10 PERMISSIONS FULL;
 DEFINE FIELD tags ON card TYPE set<record<tag>> DEFAULT [] PERMISSIONS FULL;
 DEFINE FIELD time ON card TYPE object DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON card TYPE datetime DEFAULT time::now() VALUE $before OR time::now() PERMISSIONS FULL;
@@ -72,8 +72,8 @@ DEFINE FIELD user ON deck TYPE record<user> ASSERT $value != NONE AND $value != 
 
 DEFINE TABLE deck_card TYPE RELATION IN deck OUT card SCHEMAFULL PERMISSIONS FOR select, create, update, delete WHERE in.user == $auth.id AND out.user == $auth.id;
 
-DEFINE FIELD importance ON deck_card TYPE int DEFAULT 0 PERMISSIONS FULL;
-DEFINE FIELD priority ON deck_card TYPE int DEFAULT 0 PERMISSIONS FULL;
+DEFINE FIELD importance ON deck_card TYPE int DEFAULT 0 ASSERT $value >= 0 AND $value <= 10 PERMISSIONS FULL;
+DEFINE FIELD difficulty ON deck_card TYPE int DEFAULT 0 ASSERT $value >= 0 AND $value <= 10 PERMISSIONS FULL;
 DEFINE FIELD time ON deck_card TYPE object DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON deck_card TYPE datetime DEFAULT time::now() VALUE $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON deck_card TYPE datetime DEFAULT time::now() VALUE time::now() PERMISSIONS FULL;
