@@ -1,6 +1,7 @@
 use crate::ext::message::MessageExt;
-use crate::ext::rendering::{OptionDisplayExt, VecDisplayExt};
+use crate::ext::rendering::{DisplayJoinOrDash, OptionDisplayExt};
 use flashcard_gpt_core::reexports::json::Value;
+use std::collections::BTreeSet;
 use std::fmt;
 use std::fmt::Display;
 use std::sync::Arc;
@@ -54,6 +55,8 @@ pub enum State {
     ReceiveCardImportance(StateFields),
     #[strum(props(name = "Card Tags"))]
     ReceiveCardTags(StateFields),
+    #[strum(props(name = "Card Deck"))]
+    ReceiveCardDeck(StateFields),
     #[strum(props(name = "Card Creation Confirmation (/next)"))]
     ReceiveCardConfirm(StateFields),
 }
@@ -75,7 +78,8 @@ impl State {
     pub fn get_state_description(&self, msg: Option<&Message>) -> StateDescription {
         let text = msg.map(|msg| msg.get_text()).unwrap_or_default();
         let name = self.get_str("name").unwrap_or(self.as_ref());
-        let invalid_input = Arc::from(format!("Invalid <code>{name}</code>: <code>{text}</code>"));
+        let current_state_name = self.as_ref();
+        let invalid_input = Arc::from(format!("Invalid <code>{name}</code>: <code>{text}</code>\nCurrent state: <code>{current_state_name}</code>"));
         let prompt = Arc::from(format!("Please, enter <code>{name}</code>:"));
         let repr = Arc::from(self.get_fields().to_string());
 
@@ -108,6 +112,7 @@ impl State {
             State::ReceiveCardImportance(fields) => fields,
             State::ReceiveCardTags(fields) => fields,
             State::ReceiveCardConfirm(fields) => fields,
+            State::ReceiveCardDeck(fields) => fields,
         }
     }
 
@@ -133,6 +138,7 @@ impl State {
             State::ReceiveCardImportance(fields) => fields,
             State::ReceiveCardTags(fields) => fields,
             State::ReceiveCardConfirm(fields) => fields,
+            State::ReceiveCardDeck(fields) => fields,
         }
     }
 
@@ -158,10 +164,10 @@ impl State {
             State::ReceiveCardImportance(fields) => fields,
             State::ReceiveCardTags(fields) => fields,
             State::ReceiveCardConfirm(fields) => fields,
+            State::ReceiveCardDeck(fields) => fields,
         }
     }
 }
-
 #[derive(Debug, Default, Clone)]
 pub enum StateFields {
     #[default]
@@ -184,7 +190,8 @@ pub enum StateFields {
         difficulty: Option<u8>,
         importance: Option<u8>,
         data: Option<Arc<Value>>,
-        tags: Vec<Arc<str>>,
+        tags: BTreeSet<Arc<str>>,
+        deck: Option<Arc<str>>,
     },
 }
 
@@ -200,12 +207,28 @@ impl Display for StateFields {
                 parent,
                 daily_limit,
             } => {
-                writeln!(f, "<b>id:</b> <code>{}</code>", id.to_string_or_dash())?;
-                writeln!(f, "<b>title:</b> <code>{}</code>", title.to_string_or_dash())?;
-                writeln!(f, "<b>tags:</b> <code>{}</code>", tags.join_or_dash())?;
-                writeln!(f, "<b>description:</b> <code>{}</code>", description.to_string_or_dash())?;
-                writeln!(f, "<b>parent:</b> <code>{}</code>", parent.to_string_or_dash())?;
-                write!(f, "<b>daily_limit:</b> <code>{}</code>", daily_limit.to_string_or_dash())
+                writeln!(f, "<b>id:</b> {}", id.to_string_or_dash())?;
+                writeln!(
+                    f,
+                    "<b>title:</b> {}",
+                    title.to_string_or_dash()
+                )?;
+                writeln!(f, "<b>tags:</b> {}", tags.join_or_dash())?;
+                writeln!(
+                    f,
+                    "<b>description:</b> {}",
+                    description.to_string_or_dash()
+                )?;
+                writeln!(
+                    f,
+                    "<b>parent:</b> {}",
+                    parent.to_string_or_dash()
+                )?;
+                write!(
+                    f,
+                    "<b>daily_limit:</b> {}",
+                    daily_limit.to_string_or_dash()
+                )
             }
             StateFields::Card {
                 id,
@@ -217,16 +240,34 @@ impl Display for StateFields {
                 importance,
                 data,
                 tags,
+                deck,
             } => {
-                writeln!(f, "<b>id:</b> <code>{}</code>", id.to_string_or_dash())?;
-                writeln!(f, "<b>title:</b> <code>{}</code>", title.to_string_or_dash())?;
-                writeln!(f, "<b>front:</b> <code>{}</code>", front.to_string_or_dash())?;
-                writeln!(f, "<b>back:</b> <code>{}</code>", back.to_string_or_dash())?;
-                writeln!(f, "<b>hints:</b> <code>{}</code>", hints.join_or_dash())?;
-                writeln!(f, "<b>difficulty:</b> <code>{}</code>", difficulty.to_string_or_dash())?;
-                writeln!(f, "<b>importance:</b> <code>{}</code>", importance.to_string_or_dash())?;
-                writeln!(f, "<b>data:</b> <code>{}</code>", data.to_string_or_dash())?;
-                write!(f, "<b>tags:</b> <code>{}</code>", tags.join_or_dash())
+                writeln!(f, "<b>id:</b> {}", id.to_string_or_dash())?;
+                writeln!(
+                    f,
+                    "<b>title:</b> {}",
+                    title.to_string_or_dash()
+                )?;
+                writeln!(
+                    f,
+                    "<b>front:</b> {}",
+                    front.to_string_or_dash()
+                )?;
+                writeln!(f, "<b>back:</b> {}", back.to_string_or_dash())?;
+                writeln!(f, "<b>hints:</b> {}", hints.join_or_dash())?;
+                writeln!(
+                    f,
+                    "<b>difficulty:</b> {}",
+                    difficulty.to_string_or_dash()
+                )?;
+                writeln!(
+                    f,
+                    "<b>importance:</b> {}",
+                    importance.to_string_or_dash()
+                )?;
+                writeln!(f, "<b>data:</b> {}", data.to_string_or_dash())?;
+                writeln!(f, "<b>tags:</b> {}", tags.join_or_dash())?;
+                write!(f, "<b>deck:</b> {}", deck.to_string_or_dash())
             }
         }
     }
@@ -243,7 +284,8 @@ impl StateFields {
             difficulty: None,
             importance: None,
             data: None,
-            tags: vec![],
+            tags: Default::default(),
+            deck: None,
         }
     }
 
@@ -258,4 +300,3 @@ impl StateFields {
         }
     }
 }
-

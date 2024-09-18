@@ -15,7 +15,7 @@ impl CardRepo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::utils::create_user;
+    use crate::tests::utils::{create_card, create_tag, create_user};
     use crate::tests::TEST_DB;
     use serde_json::json;
     use std::sync::Arc;
@@ -45,6 +45,46 @@ mod tests {
         let card = repo.create(card).await?;
         assert!(card.data.is_some());
 
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_deserialize_after_tag_deletion() -> TestResult {
+        let user = create_user("deserialize_after_tag_deletion").await?;
+        let tag = create_tag()
+            .user(&user)
+            .name("deserialize_after_tag_deletion")
+            .slug("deserialize_after_tag_deletion")
+            .call()
+            .await?;
+
+        let card = create_card()
+            .tags([&tag])
+            .title("deserialize_after_tag_deletion")
+            .user(&user)
+            .call()
+            .await?;
+
+        let repo = CardRepo::new_card(
+            TEST_DB.get_client().await?,
+            span!(Level::INFO, "deserialize_after_tag_deletion"),
+            true,
+        );
+        
+        let card = repo.get_by_id(card.id).await?;
+        assert_eq!(card.tags.len(), 1);
+        
+        let tag_repo = crate::repo::tag::TagRepo::new_tag(
+            TEST_DB.get_client().await?,
+            span!(Level::INFO, "deserialize_after_tag_deletion"),
+            true,
+        );
+        
+        tag_repo.delete(tag.id).await?;
+        
+        let card = repo.get_by_id(card.id).await?;
+        assert!(card.tags.is_empty());
+        
         Ok(())
     }
 }

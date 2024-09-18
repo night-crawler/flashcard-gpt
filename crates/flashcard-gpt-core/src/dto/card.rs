@@ -1,10 +1,11 @@
+use super::skip_nulls;
 use crate::dto::tag::TagDto;
 use crate::dto::time::Time;
 use crate::dto::user::User;
+use bon::Builder;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
-use bon::Builder;
 use surrealdb::sql::Thing;
 
 #[derive(Debug, Serialize, Deserialize, Builder)]
@@ -18,6 +19,7 @@ pub struct CardDto {
     pub hints: Vec<Arc<str>>,
     pub difficulty: u8,
     pub importance: u8,
+    #[serde(deserialize_with = "skip_nulls")]
     pub tags: Vec<Arc<TagDto>>,
     pub time: Option<Time>,
 }
@@ -34,7 +36,6 @@ pub struct CreateCardDto {
     pub data: Option<Arc<Value>>,
     pub tags: Vec<Thing>,
 }
-
 
 impl From<CardDto> for Thing {
     fn from(value: CardDto) -> Self {

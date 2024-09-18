@@ -25,6 +25,9 @@ impl TagRepo {
             {begin};
             $slugs = $tag_pairs.map(|$pair| $pair[1]);
             for $pair in $tag_pairs {{
+                if select * from tag where slug=$pair[1] && user=$user_id {{
+                    continue;
+                }};
                 insert into tag {{
                     user: $user_id,
                     name: $pair[0],
@@ -121,5 +124,31 @@ mod tests {
         assert_eq!(created_tags.len(), 2, "{created_tags:#?}");
 
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_duplicates() {
+        let user = create_user("test_duplicates").await.unwrap();
+        let unique_tag_pairs = vec![
+            (Arc::from("q"), Arc::from("q")),
+            (Arc::from("w"), Arc::from("w")),
+            (Arc::from("f"), Arc::from("f")),
+            (Arc::from("er"), Arc::from("er")),
+            (Arc::from("a"), Arc::from("a")),
+            (Arc::from("sad"), Arc::from("sad")),
+        ];
+        
+        let repo = TagRepo::new_tag(TEST_DB.get_client().await.unwrap(), span!(Level::INFO, "tag_create"), true);
+        let created_tags = repo.get_or_create_tags(user.id.clone(), unique_tag_pairs.clone()).await.unwrap();
+        assert_eq!(created_tags.len(), unique_tag_pairs.len(), "{created_tags:#?}");
+        
+        let next_tags = vec![
+            (Arc::from("sad"), Arc::from("sad")),
+            (Arc::from("wew"), Arc::from("wew")),
+        ];
+        
+        let created_tags = repo.get_or_create_tags(user.id.clone(), next_tags.clone()).await.unwrap();
+        assert_eq!(created_tags.len(), next_tags.len(), "{created_tags:#?}");
+        assert!(created_tags.into_iter().all(|t| ["sad", "wew"].contains(&t.slug.as_ref())));
     }
 }

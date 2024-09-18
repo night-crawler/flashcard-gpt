@@ -12,6 +12,7 @@ use flashcard_gpt_core::repo::deck::DeckRepo;
 use flashcard_gpt_core::repo::tag::TagRepo;
 use flashcard_gpt_core::repo::user::UserRepo;
 use std::sync::Arc;
+use itertools::Itertools;
 use teloxide::types::InlineKeyboardMarkup;
 use tracing::Span;
 
@@ -55,12 +56,13 @@ impl Repositories {
 
     pub async fn get_or_create_tags(
         &self,
-        user_id: Thing,
-        tags: Vec<Arc<str>>,
+        user_id: impl Into<Thing>,
+        tags: impl IntoIterator<Item=Arc<str>>,
     ) -> anyhow::Result<Vec<TagDto>> {
         // we assume that slug after slugify stays the same
         let tags = tags
             .into_iter()
+            .unique()
             .map(|tag| {
                 let slug = slug::slugify(&tag);
                 (tag, Arc::from(slug))

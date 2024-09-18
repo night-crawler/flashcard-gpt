@@ -6,11 +6,11 @@ use crate::state::{State, StateFields};
 use crate::{patch_state, FlashGptDialogue};
 use anyhow::anyhow;
 use flashcard_gpt_core::dto::deck::{CreateDeckDto, DeckSettings};
-use flashcard_gpt_core::reexports::db::sql::Thing;
 use std::sync::Arc;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Message, Update};
+use crate::ext::StrExt;
 use crate::schema::root::cancel;
 
 pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
@@ -96,7 +96,7 @@ async fn receive_deck_title(manager: ChatManager, msg: Message) -> anyhow::Resul
 }
 
 async fn receive_deck_tags(manager: ChatManager) -> anyhow::Result<()> {
-    let Some(new_tags) = manager.parse_comma_separated_values() else {
+    let Some(new_tags) = manager.parse_html_values(',') else {
         manager.send_invalid_input().await?;
         return Ok(());
     };
@@ -112,7 +112,7 @@ async fn receive_deck_tags(manager: ChatManager) -> anyhow::Result<()> {
 }
 
 async fn receive_deck_description(manager: ChatManager) -> anyhow::Result<()> {
-    let Some(next_description) = manager.parse_text() else {
+    let Some(next_description) = manager.parse_html() else {
         manager.send_invalid_input().await?;
         return Ok(());
     };
@@ -173,9 +173,7 @@ async fn create_deck(
     };
 
     let parent = if let Some(parent) = parent {
-        let parent =
-            Thing::try_from(parent.as_ref()).map_err(|_| anyhow!("Failed to get parent by id"))?;
-        repositories.decks.get_by_id(parent).await?.id.into()
+        repositories.decks.get_by_id(parent.as_thing()?).await?.id.into()
     } else {
         None
     };

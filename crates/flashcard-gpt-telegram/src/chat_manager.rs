@@ -1,11 +1,12 @@
 use crate::command::CommandExt;
 use crate::db::repositories::Repositories;
-use crate::ext::dialogue::DialogueExt;
 use crate::ext::menu_repr::IteratorMenuReprExt;
+use crate::message_render::RenderMessageTextHelper;
 use crate::state::FlashGptDialogue;
 use crate::state::{State, StateDescription};
 use flashcard_gpt_core::dto::binding::BindingDto;
 use std::fmt::Debug;
+use std::str::pattern::Pattern;
 use std::str::FromStr;
 use std::sync::Arc;
 use teloxide::adaptors::DefaultParseMode;
@@ -37,7 +38,10 @@ impl ChatManager {
         message = ?self.message,
         text = ?text,
     ))]
-    pub async fn send_message(&self, text: impl Into<String> + Debug) -> Result<Message, RequestError> {
+    pub async fn send_message(
+        &self,
+        text: impl Into<String> + Debug,
+    ) -> Result<Message, RequestError> {
         self.bot.send_message(self.dialogue.chat_id(), text).await
     }
 
@@ -57,16 +61,16 @@ impl ChatManager {
         message = ?self.message,
     ))]
     pub async fn send_invalid_input(&self) -> anyhow::Result<()> {
-        let desc = self
-            .dialogue
-            .get_state_description(self.message.as_deref())
-            .await?;
-
+        let desc = self.get_state_description().await?;
         self.send_message(desc.invalid_input.clone().as_ref())
             .await?;
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip_all, parent = &self.span, err, fields(
+        chat_id = ?self.dialogue.chat_id(),
+        message = ?self.message,
+    ))]
     pub async fn send_tag_menu(&self) -> anyhow::Result<()> {
         let desc = self.get_description().await?;
         let tag_menu = self
@@ -83,6 +87,10 @@ impl ChatManager {
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip_all, parent = &self.span, err, fields(
+        chat_id = ?self.dialogue.chat_id(),
+        message = ?self.message,
+    ))]
     pub async fn send_deck_menu(&self) -> anyhow::Result<()> {
         let desc = self.get_description().await?;
         let tag_menu = self
@@ -102,32 +110,25 @@ impl ChatManager {
     pub async fn send_state_and_prompt(&self) -> anyhow::Result<()> {
         let desc = self.get_description().await?;
         let combined = format!("{}\n\n{}", desc.repr, desc.prompt);
-        self.bot
-            .send_message(self.dialogue.chat_id(), combined)
-            .await?;
-
+        self.send_message(combined).await?;
         Ok(())
     }
 
-    pub fn parse_comma_separated_values(&self) -> Option<impl Iterator<Item = Arc<str>> + use<'_>> {
-        if let Some(message) = self.message.as_deref()
-            && let Some(text) = message.text()
-        {
-            return Some(
-                text.split(',')
-                    .map(str::trim)
-                    .filter(|s| !s.is_empty())
-                    .map(Arc::from),
-            );
-        }
-
-        None
-    }
-
-    pub fn parse_text(&self) -> Option<Arc<str>> {
+    pub fn parse_html_values(&self, p: impl Pattern) -> Option<Vec<Arc<str>>> {
         self.message
             .as_deref()
-            .and_then(|message| message.text().map(Arc::from))
+            .and_then(|message| message.html_text())
+            .map(|text| {
+                text.split(p)
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(Arc::from)
+                    .collect()
+            })
+    }
+
+    pub fn parse_html(&self) -> Option<Arc<str>> {
+        self.message.as_deref()?.html_text().map(Arc::from)
     }
 
     pub fn parse_integer<T>(&self) -> Option<T>
@@ -191,5 +192,13 @@ impl ChatManager {
     {
         self.bot.set_my_commands(T::bot_commands()).await?;
         Ok(())
+    }
+
+    pub async fn get_state_description(&self) -> anyhow::Result<StateDescription> {
+        let desc = self
+            .get_state()
+            .await?
+            .get_state_description(self.message.as_deref());
+        Ok(desc)
     }
 }

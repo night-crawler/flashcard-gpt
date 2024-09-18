@@ -3,6 +3,8 @@
 #![feature(array_chunks)]
 #![feature(iter_array_chunks)]
 #![feature(anonymous_lifetime_in_impl_trait)]
+#![feature(pattern)]
+
 pub mod chat_manager;
 pub mod command;
 pub mod db;
@@ -10,6 +12,7 @@ pub mod ext;
 pub mod macros;
 pub mod schema;
 pub mod state;
+pub mod message_render;
 
 use crate::db::repositories::Repositories;
 use crate::schema::schema;

@@ -75,14 +75,14 @@ where
     }
 
     #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?id))]
-    pub async fn get_by_id(&self, id: Thing) -> Result<Read, CoreError> {
+    pub async fn get_by_id(&self, id: impl Into<Thing> + Debug) -> Result<Read, CoreError> {
         self.db
             .get_entity_by_id(id, self.fetch)
             .instrument(Span::current())
             .await
     }
 
-    pub async fn list_by_user_id(&self, user_id: Thing) -> Result<Vec<Read>, CoreError> {
+    pub async fn list_by_user_id(&self, id: impl Into<Thing>) -> Result<Vec<Read>, CoreError> {
         let fetch = if self.fetch.is_empty() {
             String::new()
         } else {
@@ -96,12 +96,27 @@ where
             fetch = fetch
         );
 
-        let mut response = self.db.query(query).bind(("user_id", user_id)).await?;
+        let mut response = self.db.query(query).bind(("user_id", id.into())).await?;
 
         response.errors_or_ok()?;
 
         let result: Vec<Read> = response.take(0)?;
         Ok(result)
+    }
+    
+    pub async fn delete(&self, id: impl Into<Thing>) -> Result<(), CoreError> {
+        let query = format!(
+            r#"
+            delete from {table_name} where id=$id;
+            "#,
+            table_name = self.table_name
+        );
+
+        let mut response = self.db.query(query).bind(("id", id.into())).await?;
+
+        response.errors_or_ok()?;
+
+        Ok(())
     }
 
     pub fn begin_transaction_statement(&self) -> &'static str {

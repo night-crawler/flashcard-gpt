@@ -1,12 +1,14 @@
+use std::collections::BTreeSet;
 use crate::chat_manager::ChatManager;
 use crate::command::CardCommand;
-use crate::db::repositories::Repositories;
 use crate::schema::receive_next;
 use crate::state::{State, StateFields};
-use crate::{patch_state, FlashGptDialogue};
+use crate::patch_state;
 use anyhow::anyhow;
 
+use crate::ext::StrExt;
 use flashcard_gpt_core::dto::card::CreateCardDto;
+use flashcard_gpt_core::dto::deck_card::CreateDeckCardDto;
 use std::sync::Arc;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
@@ -35,6 +37,14 @@ pub fn card_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
                 .endpoint(receive_card_tags),
         )
         .branch(
+            case![State::ReceiveCardDeck(fields)]
+                .branch(
+                    teloxide::filter_command::<CardCommand, _>()
+                        .branch(case![CardCommand::Next].endpoint(receive_next)),
+                )
+                .endpoint(receive_card_deck),
+        )
+        .branch(
             case![State::ReceiveCardConfirm(fields)].branch(
                 teloxide::filter_command::<CardCommand, _>()
                     .branch(case![CardCommand::Next].endpoint(create_card)),
@@ -58,7 +68,7 @@ pub async fn handle_create_card(manager: ChatManager) -> anyhow::Result<()> {
 }
 
 async fn receive_card_title(manager: ChatManager) -> anyhow::Result<()> {
-    let Some(next_title) = manager.parse_text() else {
+    let Some(next_title) = manager.parse_html() else {
         manager.send_invalid_input().await?;
         return Ok(());
     };
@@ -77,7 +87,7 @@ async fn receive_card_title(manager: ChatManager) -> anyhow::Result<()> {
 }
 
 async fn receive_card_front(manager: ChatManager) -> anyhow::Result<()> {
-    let Some(next_front) = manager.parse_text() else {
+    let Some(next_front) = manager.parse_html() else {
         manager.send_invalid_input().await?;
         return Ok(());
     };
@@ -93,7 +103,7 @@ async fn receive_card_front(manager: ChatManager) -> anyhow::Result<()> {
 }
 
 async fn receive_card_back(manager: ChatManager) -> anyhow::Result<()> {
-    let Some(next_back) = manager.parse_text() else {
+    let Some(next_back) = manager.parse_html() else {
         manager.send_invalid_input().await?;
         return Ok(());
     };
@@ -113,7 +123,7 @@ async fn receive_card_back(manager: ChatManager) -> anyhow::Result<()> {
 }
 
 async fn receive_card_hints(manager: ChatManager) -> anyhow::Result<()> {
-    let Some(next_hints) = manager.parse_comma_separated_values() else {
+    let Some(next_hints) = manager.parse_html_values("\n\n") else {
         manager.send_invalid_input().await?;
         return Ok(());
     };
@@ -169,27 +179,29 @@ async fn receive_card_importance(manager: ChatManager) -> anyhow::Result<()> {
 }
 
 async fn receive_card_tags(manager: ChatManager) -> anyhow::Result<()> {
-    let Some(next_tags) = manager.parse_comma_separated_values() else {
+    let Some(next_tags) = manager.parse_html_values(',') else {
         manager.send_invalid_input().await?;
         return Ok(());
     };
 
-    let fields = patch_state!(manager, StateFields::Card { tags }, |tags: &mut Vec<
+    let fields = patch_state!(manager, StateFields::Card { tags }, |tags: &mut BTreeSet<
         Arc<str>,
     >| {
         tags.extend(next_tags)
     });
     manager.update_state(State::ReceiveCardTags(fields)).await?;
-    manager.send_state_and_prompt().await?;
     manager.send_tag_menu().await?;
 
     Ok(())
 }
 
+async fn receive_card_deck(manager: ChatManager) -> anyhow::Result<()> {
+    manager.send_invalid_input().await?;
+    Ok(())
+}
+
 async fn create_card(
     manager: ChatManager,
-    dialogue: FlashGptDialogue,
-    repositories: Repositories,
 ) -> anyhow::Result<()> {
     let StateFields::Card {
         id: _id,
@@ -201,16 +213,17 @@ async fn create_card(
         importance,
         data,
         tags,
+        deck,
     } = manager.get_state().await?.take_fields()
     else {
         manager.send_invalid_input().await?;
         return Ok(());
     };
 
-    let user_id = manager.binding.user.id.clone();
+    let user = &manager.binding.user;
 
-    let tags = repositories
-        .get_or_create_tags(user_id.clone(), tags)
+    let tags = manager.repositories
+        .get_or_create_tags(user.as_ref(), tags)
         .await?
         .into_iter()
         .map(|tag| tag.id)
@@ -218,10 +231,10 @@ async fn create_card(
 
     let title = title.ok_or_else(|| anyhow!("Title was not provided"))?;
 
-    let card = repositories
+    let card = manager.repositories
         .cards
         .create(CreateCardDto {
-            user: user_id,
+            user: user.id.clone(),
             title,
             front,
             back,
@@ -237,6 +250,17 @@ async fn create_card(
         .send_message(format!("Created a new card: {card:?}"))
         .await?;
 
-    dialogue.exit().await?;
+    if let Some(deck) = deck {
+        let rel = manager.repositories.decks.relate_card(CreateDeckCardDto {
+            deck: deck.as_thing()?,
+            card: card.id.clone(),
+            importance: 0,
+            difficulty: 0,
+        }).await?;
+        manager.send_message(format!("Related card to deck: {rel:?}"))
+            .await?;
+    }
+    
+    manager.dialogue.exit().await?;
     Ok(())
 }

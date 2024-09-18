@@ -45,6 +45,8 @@ async fn handle_root_help(manager: ChatManager) -> anyhow::Result<()> {
 
 pub async fn cancel(manager: ChatManager) -> anyhow::Result<()> {
     manager.send_message("Cancelling the dialogue.").await?;
+    manager.dialogue.exit().await?;
+    manager.update_state(State::InsideRootMenu(StateFields::Empty)).await?;
     Ok(())
 }
 
@@ -150,7 +152,7 @@ pub(super) async fn receive_root_menu_item(
 
         (Some(State::ReceiveCardTags(mut fields)), tag) => {
             if let StateFields::Card { tags, .. } = &mut fields {
-                tags.push(tag.into());
+                tags.insert(tag.into());
             } else {
                 bail!("Invalid state: {:?}", fields);
             }
@@ -166,6 +168,18 @@ pub(super) async fn receive_root_menu_item(
             }
             manager
                 .update_state(State::ReceiveDeckSettingsDailyLimit(fields))
+                .await?;
+            manager.send_state_and_prompt().await?;
+        }
+
+        (Some(State::ReceiveCardDeck(mut fields)), next_deck) => {
+            if let StateFields::Card { deck, .. } = &mut fields {
+                deck.replace(next_deck.into());
+            } else {
+                bail!("Invalid state: {:?}", fields);
+            }
+            manager
+                .update_state(State::ReceiveCardConfirm(fields))
                 .await?;
             manager.send_state_and_prompt().await?;
         }

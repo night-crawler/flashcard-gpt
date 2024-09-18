@@ -6,7 +6,7 @@ use testcontainers::{
 };
 
 const NAME: &str = "surrealdb/surrealdb";
-const TAG: &str = "v2.0.0-beta.1";
+const TAG: &str = "v2.0.0";
 
 pub const SURREALDB_PORT: ContainerPort = ContainerPort::Tcp(8000);
 

@@ -83,9 +83,9 @@ async fn receive_next(manager: ChatManager) -> anyhow::Result<()> {
             manager.send_state_and_prompt().await?;
         }
         State::ReceiveCardTags(fields) => {
-            let next_state = State::ReceiveCardConfirm(fields);
+            let next_state = State::ReceiveCardDeck(fields);
             manager.update_state(next_state).await?;
-            manager.send_state_and_prompt().await?;
+            manager.send_deck_menu().await?;
         }
         State::ReceiveDeckDescription { .. } => {}
         State::ReceiveDeckParent(fields) => {

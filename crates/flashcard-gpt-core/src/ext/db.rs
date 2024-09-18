@@ -21,7 +21,7 @@ pub trait DbExt {
 
     fn get_entity_by_id<R>(
         &self,
-        id: Thing,
+        id: impl Into<Thing>,
         fetch: &'static str,
     ) -> impl Future<Output = Result<R, CoreError>>
     where
@@ -76,7 +76,7 @@ impl DbExt for Surreal<Client> {
         let card = result.ok_or_else(|| CoreError::CreateError(format!("{:?}", dto).into()))?;
         Ok(card)
     }
-    async fn get_entity_by_id<R>(&self, id: Thing, fetch: &'static str) -> Result<R, CoreError>
+    async fn get_entity_by_id<R>(&self, id: impl Into<Thing>, fetch: &'static str) -> Result<R, CoreError>
     where
         R: serde::de::DeserializeOwned,
     {
@@ -85,6 +85,8 @@ impl DbExt for Surreal<Client> {
         } else {
             format!("fetch {}", fetch)
         };
+        
+        let id = Arc::from(id.into());
         let mut response = self
             .query(format!("select * from $id {fetch}"))
             .bind(("id", id.clone()))
