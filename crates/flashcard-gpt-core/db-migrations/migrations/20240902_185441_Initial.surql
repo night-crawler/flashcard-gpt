@@ -48,6 +48,7 @@ DEFINE FIELD time.created_at ON card_group TYPE datetime DEFAULT time::now() VAL
 DEFINE FIELD time.updated_at ON card_group TYPE datetime DEFAULT time::now() VALUE time::now() PERMISSIONS FULL;
 DEFINE FIELD cards ON card_group TYPE array<record<card>> DEFAULT [] PERMISSIONS FULL;
 DEFINE FIELD user ON card_group TYPE record<user> ASSERT $value != NONE AND $value != NULL AND fn::exists(<string> $value) PERMISSIONS FULL;
+DEFINE FIELD tags ON card_group TYPE set<record<tag>> DEFAULT [] PERMISSIONS FULL;
 
 -- ------------------------------
 -- TABLE: deck
@@ -72,13 +73,23 @@ DEFINE FIELD user ON deck TYPE record<user> ASSERT $value != NONE AND $value != 
 
 DEFINE TABLE deck_card TYPE RELATION IN deck OUT card SCHEMAFULL PERMISSIONS FOR select, create, update, delete WHERE in.user == $auth.id AND out.user == $auth.id;
 
-DEFINE FIELD importance ON deck_card TYPE int DEFAULT 0 ASSERT $value >= 0 AND $value <= 10 PERMISSIONS FULL;
-DEFINE FIELD difficulty ON deck_card TYPE int DEFAULT 0 ASSERT $value >= 0 AND $value <= 10 PERMISSIONS FULL;
 DEFINE FIELD time ON deck_card TYPE object DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON deck_card TYPE datetime DEFAULT time::now() VALUE $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON deck_card TYPE datetime DEFAULT time::now() VALUE time::now() PERMISSIONS FULL;
 
 DEFINE INDEX unique_in_out ON deck_card FIELDS in, out UNIQUE;
+
+-- ------------------------------
+-- TABLE: deck_card_group
+-- ------------------------------
+
+DEFINE TABLE deck_card_group TYPE RELATION IN deck OUT card_group SCHEMAFULL PERMISSIONS FOR select, create, update, delete WHERE in.user == $auth.id AND out.user == $auth.id;
+
+DEFINE FIELD time ON deck_card_group TYPE object DEFAULT {  } PERMISSIONS FULL;
+DEFINE FIELD time.created_at ON deck_card_group TYPE datetime DEFAULT time::now() VALUE $before OR time::now() PERMISSIONS FULL;
+DEFINE FIELD time.updated_at ON deck_card_group TYPE datetime DEFAULT time::now() VALUE time::now() PERMISSIONS FULL;
+
+DEFINE INDEX unique_in_out ON deck_card_group FIELDS in, out UNIQUE;
 
 -- ------------------------------
 -- TABLE: global_settings
@@ -97,9 +108,11 @@ DEFINE FIELD user ON global_settings TYPE record<user> ASSERT $value != NONE AND
 -- TABLE: history
 -- ------------------------------
 
-DEFINE TABLE history TYPE RELATION IN deck_card OUT user SCHEMAFULL PERMISSIONS FOR select, create, update, delete WHERE in.user == $auth.id AND out.user == $auth.id;
+DEFINE TABLE history TYPE ANY SCHEMAFULL PERMISSIONS FOR select, create, update, delete WHERE user = $auth.id;
+DEFINE FIELD user ON history TYPE record<user> ASSERT $value != NONE AND $value != NULL AND fn::exists(<string> $value) PERMISSIONS FULL;
+DEFINE FIELD deck_card ON history TYPE option<record<deck_card>> PERMISSIONS FULL;
+DEFINE FIELD deck_card_group ON history TYPE option<record<deck_card_group>> PERMISSIONS FULL;
 
-DEFINE FIELD difficulty ON history TYPE int ASSERT $value >= 0 AND $value <= 10 PERMISSIONS FULL;
 DEFINE FIELD time ON history TYPE option<object> DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON history TYPE datetime DEFAULT time::now() VALUE $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON history TYPE datetime DEFAULT time::now() VALUE time::now() PERMISSIONS FULL;

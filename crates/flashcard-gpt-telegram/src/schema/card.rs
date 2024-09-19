@@ -254,8 +254,6 @@ async fn create_card(
         let rel = manager.repositories.decks.relate_card(CreateDeckCardDto {
             deck: deck.as_thing()?,
             card: card.id.clone(),
-            importance: 0,
-            difficulty: 0,
         }).await?;
         manager.send_message(format!("Related card to deck: {rel:?}"))
             .await?;

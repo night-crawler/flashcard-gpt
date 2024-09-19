@@ -1,5 +1,7 @@
+use crate::dto::card::CardDto;
 use crate::dto::deck::{CreateDeckDto, DeckDto};
 use crate::dto::deck_card::{CreateDeckCardDto, DeckCardDto};
+use crate::dto::deck_card_group::{CreateDeckCardGroupDto, DeckCardGroupDto};
 use crate::error::CoreError;
 use crate::ext::response_ext::ResponseExt;
 use crate::repo::generic_repo::GenericRepo;
@@ -8,7 +10,6 @@ use surrealdb::engine::remote::ws::Client;
 use surrealdb::sql::Thing;
 use surrealdb::Surreal;
 use tracing::Span;
-use crate::dto::card::CardDto;
 
 pub type DeckRepo = GenericRepo<CreateDeckDto, DeckDto, ()>;
 
@@ -23,10 +24,9 @@ impl DeckRepo {
         let query = format!(
             r#"
             {begin_transaction}
-            $id = (relate ($dto.deck) -> deck_card -> ($dto.card) content {{
-                difficulty: $dto.difficulty,
-                importance: $dto.importance,
-            }})[0].id;
+            $id = (
+                relate ($dto.deck) -> deck_card -> ($dto.card)
+            )[0].id;
             return select * from $id fetch in, out, in.tags, out.tags, in.user, out.user;
             {commit_transaction}
             "#,
@@ -42,8 +42,40 @@ impl DeckRepo {
 
         Ok(deck_card)
     }
-    
-    pub async fn list_cards(&self, user: impl Into<Thing>, deck: impl Into<Thing>) -> Result<Vec<CardDto>, CoreError> {
+
+    #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?dto))]
+    pub async fn relate_card_group(
+        &self,
+        dto: CreateDeckCardGroupDto,
+    ) -> Result<DeckCardGroupDto, CoreError> {
+        let dto = Arc::new(dto);
+        let query = format!(
+            r#"
+            {begin_transaction}
+            $id = (
+                relate ($dto.deck) -> deck_card_group -> ($dto.card_group) 
+            )[0].id;
+            return select * from $id 
+                fetch in, out, in.tags, out.tags, in.user, out.user, out.cards, out.cards.user, out.cards.tags;
+            {commit_transaction}
+            "#,
+            begin_transaction = self.begin_transaction_statement(),
+            commit_transaction = self.commit_transaction_statement()
+        );
+
+        let mut response = self.db.query(query).bind(("dto", dto.clone())).await?;
+        response.errors_or_ok()?;
+        let deck_card: Option<DeckCardGroupDto> = response.take(response.num_statements() - 1)?;
+        let deck_card =
+            deck_card.ok_or_else(|| CoreError::CreateError(format!("{:?}", dto).into()))?;
+
+        Ok(deck_card)
+    }
+    pub async fn list_cards(
+        &self,
+        user: impl Into<Thing>,
+        deck: impl Into<Thing>,
+    ) -> Result<Vec<CardDto>, CoreError> {
         let query = format!(
             r#"
             {begin_transaction}
@@ -59,13 +91,15 @@ impl DeckRepo {
             commit_transaction = self.commit_transaction_statement()
         );
 
-        let mut response = self.db.query(query)
+        let mut response = self
+            .db
+            .query(query)
             .bind(("user", user.into()))
             .bind(("deck", deck.into()))
             .await?;
-        
+
         response.errors_or_ok()?;
-        
+
         Ok(response.take(response.num_statements() - 1)?)
     }
 }
@@ -74,7 +108,9 @@ impl DeckRepo {
 mod tests {
     use super::*;
     use crate::dto::deck::DeckSettings;
-    use crate::tests::utils::{create_card, create_deck, create_tag, create_user};
+    use crate::tests::utils::{
+        create_card, create_card_group, create_deck, create_tag, create_user,
+    };
     use crate::tests::TEST_DB;
     use std::sync::Arc;
     use testresult::TestResult;
@@ -85,13 +121,9 @@ mod tests {
         let db = TEST_DB.get_client().await?;
         let repo = DeckRepo::new_deck(db.clone(), span!(Level::INFO, "deck_create"), false);
         let user = create_user("deck_create").await?;
-        
-        let tag = create_tag()
-            .user(&user)
-            .name("name")
-            .call()
-            .await?;
-        
+
+        let tag = create_tag().user(&user).name("name").call().await?;
+
         let deck = repo
             .create(CreateDeckDto {
                 description: Some(Arc::from("description")),
@@ -107,7 +139,7 @@ mod tests {
 
         assert_eq!(deck.description.as_deref(), Some("description"));
         assert!(deck.parent.is_none());
-        
+
         let deck2 = create_deck()
             .title("sample deck 2")
             .user(&user)
@@ -123,7 +155,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_relation_ops() -> TestResult {
+    async fn test_relate_card() -> TestResult {
         let db = TEST_DB.get_client().await?;
         let repo = DeckRepo::new_deck(
             db.clone(),
@@ -132,11 +164,7 @@ mod tests {
         );
         let user = create_user("deck_create_relation").await?;
 
-        let tag = create_tag()
-            .user(&user)
-            .name("name")
-            .call()
-            .await?;
+        let tag = create_tag().user(&user).name("name").call().await?;
 
         let deck1 = create_deck()
             .title("sample deck")
@@ -144,16 +172,16 @@ mod tests {
             .tags([&tag])
             .call()
             .await?;
-        
+
         let deck2 = create_deck()
             .title("sample deck 2")
             .user(&user)
             .tags([&tag])
             .call()
             .await?;
-        
+
         let mut relations = vec![];
-        
+
         for _ in 0..10 {
             let card = create_card()
                 .user(&user)
@@ -161,23 +189,75 @@ mod tests {
                 .title(format!("card {}", 1))
                 .call()
                 .await?;
-            
-            let relation = repo.relate_card(CreateDeckCardDto {
-                deck: deck1.id.clone(),
-                card: card.id.clone(),
-                importance: 0,
-                difficulty: 0,
-            }).await?;
-            
+
+            let relation = repo
+                .relate_card(CreateDeckCardDto {
+                    deck: deck1.id.clone(),
+                    card: card.id.clone(),
+                })
+                .await?;
+
             relations.push(relation);
         }
-        
+
         let cards = repo.list_cards(&user, &deck1).await?;
         assert_eq!(cards.len(), 10);
-        
+
         let cards2 = repo.list_cards(&user, &deck2).await?;
         assert!(cards2.is_empty());
-        
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_relate_card_group() -> TestResult {
+        let db = TEST_DB.get_client().await?;
+        let repo = DeckRepo::new_deck(
+            db.clone(),
+            span!(Level::INFO, "deck_create_relation"),
+            false,
+        );
+        let user = create_user("deck_create_relation").await?;
+
+        let tag = create_tag().user(&user).name("name").call().await?;
+
+        let deck1 = create_deck()
+            .title("sample deck")
+            .user(&user)
+            .tags([&tag])
+            .call()
+            .await?;
+
+        let mut cards = vec![];
+        for _ in 0..10 {
+            let card = create_card()
+                .user(&user)
+                .tags([&tag])
+                .title(format!("card {}", 1))
+                .call()
+                .await?;
+            cards.push(card);
+        }
+
+        let card_group = create_card_group()
+            .user(&user)
+            .title("card group")
+            .importance(1)
+            .tags([&tag])
+            .cards(cards)
+            .difficulty(2)
+            .call()
+            .await?;
+
+        let relation = repo
+            .relate_card_group(CreateDeckCardGroupDto {
+                deck: deck1.id.clone(),
+                card_group: card_group.id.clone(),
+            })
+            .await?;
+
+        assert_eq!(relation.card_group.cards.len(), 10);
+
         Ok(())
     }
 }

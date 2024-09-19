@@ -11,7 +11,9 @@ pub mod tag;
 pub mod time;
 pub mod user;
 pub mod deck_card;
-
+pub mod history;
+pub mod deck_card_group;
+pub mod card_group;
 
 fn skip_nulls<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
 where

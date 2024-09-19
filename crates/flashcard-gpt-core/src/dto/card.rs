@@ -12,7 +12,7 @@ use surrealdb::sql::Thing;
 pub struct CardDto {
     pub id: Thing,
     pub user: Arc<User>,
-    pub title: Arc<String>,
+    pub title: Arc<str>,
     pub front: Option<Arc<str>>,
     pub back: Option<Arc<str>>,
     pub data: Option<Arc<Value>>,

@@ -11,7 +11,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 #[derive(Debug, Serialize, Deserialize, Builder)]
 pub struct GlobalSettingsDto {
     pub id: Thing,
-    pub daily_limit: i32,
+    pub daily_limit: u16,
     pub time: Time,
     #[serde(deserialize_with = "from_raw", serialize_with = "to_raw")]
     pub timetable: Vec<[Duration; 2]>,
