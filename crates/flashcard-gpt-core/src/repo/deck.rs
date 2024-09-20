@@ -123,7 +123,6 @@ mod tests {
         let user = create_user("deck_create").await?;
 
         let tag = create_tag().user(&user).name("name").call().await?;
-
         let deck = repo
             .create(CreateDeckDto {
                 description: Some(Arc::from("description")),

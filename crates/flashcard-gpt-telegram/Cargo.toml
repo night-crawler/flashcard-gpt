@@ -27,6 +27,9 @@ atty = { version = "0.2", features = [] }
 
 itertools = "0.13"
 
+llm-chain = "0.13"
+llm-chain-openai = "0.13"
+
 [dependencies.uuid]
 version = "1.10.0"
 features = [
@@ -34,3 +37,6 @@ features = [
     "fast-rng",
     "macro-diagnostics",
 ]
+
+[dev-dependencies]
+testresult = "0.4"

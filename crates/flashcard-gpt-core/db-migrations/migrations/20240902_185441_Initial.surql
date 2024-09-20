@@ -40,6 +40,7 @@ DEFINE FIELD user ON card TYPE record<user> ASSERT $value != NONE AND $value != 
 -- ------------------------------
 
 DEFINE TABLE card_group TYPE NORMAL SCHEMAFULL PERMISSIONS FOR select, create, update, delete WHERE user = $auth.id;
+DEFINE FIELD data ON card_group FLEXIBLE TYPE option<object> PERMISSIONS FULL;
 DEFINE FIELD importance ON card_group TYPE int DEFAULT 0 ASSERT $value >= 0 AND $value <= 10 PERMISSIONS FULL;
 DEFINE FIELD difficulty ON card_group TYPE int DEFAULT 0 ASSERT $value >= 0 AND $value <= 10 PERMISSIONS FULL;
 DEFINE FIELD title ON card_group TYPE string PERMISSIONS FULL;

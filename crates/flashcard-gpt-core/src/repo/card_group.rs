@@ -17,6 +17,8 @@ mod tests {
     use super::*;
     use crate::tests::TEST_DB;
     use std::sync::Arc;
+    use serde::de::Unexpected::Option;
+    use serde_json::json;
     use testresult::TestResult;
     use tracing::{span, Level};
     use crate::tests::utils::{create_card, create_tag, create_user};
@@ -43,6 +45,9 @@ mod tests {
             tags: vec![tag.id],
             cards: vec![card1.id, card2.id],
             difficulty: 2,
+            data: Some(Arc::from(json!({
+                "a": "b"
+            }))),
         };
 
         let card_group = repo.create(card_group).await?;

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use bon::Builder;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use surrealdb::sql::Thing;
 use crate::dto::card::CardDto;
 use crate::dto::tag::TagDto;
@@ -17,6 +18,7 @@ pub struct CardGroupDto {
     pub importance: u8,
     pub difficulty: u8,
     pub title: Arc<str>,
+    pub data: Option<Arc<Value>>,
 
     pub time: Time,
 
@@ -34,6 +36,7 @@ pub struct CreateCardGroupDto {
     pub title: Arc<str>,
     pub importance: u8,
     pub difficulty: u8,
+    pub data: Option<Arc<Value>>,
     pub cards: Vec<Thing>,
     pub tags: Vec<Thing>,
 }

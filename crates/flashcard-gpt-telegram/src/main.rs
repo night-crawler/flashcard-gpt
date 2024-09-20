@@ -13,7 +13,10 @@ pub mod macros;
 pub mod schema;
 pub mod state;
 pub mod message_render;
+pub mod llm;
 
+use llm_chain::executor;
+use llm_chain_openai::chatgpt::Executor;
 use crate::db::repositories::Repositories;
 use crate::schema::schema;
 use crate::state::{FlashGptDialogue, State};
@@ -40,6 +43,7 @@ async fn main() -> anyhow::Result<()> {
     .await?;
 
     db.use_ns("flashcards_gpt").use_db("flashcards").await?;
+
 
     let repositories = Repositories::new(db.clone(), span!(Level::INFO, "root"));
 
