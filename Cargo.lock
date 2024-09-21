@@ -1471,14 +1471,13 @@ dependencies = [
  "chrono",
  "chrono-tz 0.10.0",
  "console-subscriber",
- "ctor",
+ "flashcard-gpt-tests",
  "humantime",
  "humantime-serde",
  "once_cell",
  "serde",
  "serde_json",
  "surrealdb",
- "testcontainers",
  "testresult",
  "thiserror",
  "tokio",
@@ -1508,6 +1507,20 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "flashcard-gpt-tests"
+version = "0.1.0"
+dependencies = [
+ "bon",
+ "ctor",
+ "flashcard-gpt-core",
+ "surrealdb",
+ "testcontainers",
+ "testresult",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

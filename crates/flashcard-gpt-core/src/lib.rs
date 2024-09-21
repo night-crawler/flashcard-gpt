@@ -9,5 +9,3 @@ pub mod ext;
 pub mod logging;
 pub mod reexports;
 pub mod repo;
-#[cfg(test)]
-pub mod tests;

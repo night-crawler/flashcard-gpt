@@ -37,31 +37,3 @@ impl UserRepo {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::tests::utils::create_user;
-    use crate::tests::{TestDbExt, TEST_DB};
-    use tracing::{span, Level};
-
-    #[tokio::test]
-    async fn test_create_user() -> Result<(), CoreError> {
-        let db = TEST_DB.get_client().await?;
-        let repo = UserRepo::new_user(db, span!(Level::INFO, "user_create"), true);
-
-        let _ = repo.list_users().await?;
-
-        let user = create_user("Bla").await?;
-
-        assert_eq!(user.email.as_ref(), "bla@example.com");
-        assert_eq!(user.name.as_ref(), "Bla");
-
-        assert!(!user.password.is_empty());
-        assert!(user.time.is_some());
-
-        let user = repo.get_by_id(user.id).await?;
-        println!("{:?}", user);
-
-        Ok(())
-    }
-}

@@ -26,6 +26,5 @@ console-subscriber = { version = "0.4", features = ["env-filter"] }
 atty = { version = "0.2", features = [] }
 
 [dev-dependencies]
-testcontainers = "0.22"
+flashcard-gpt-tests = { path = "../flashcard-gpt-tests" }
 testresult = "0.4"
-ctor = "0.2"

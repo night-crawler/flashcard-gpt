@@ -1,77 +1,21 @@
-use crate::dto::card::{CardDto, CreateCardDto};
-use crate::dto::card_group::{CardGroupDto, CreateCardGroupDto};
-use crate::dto::deck::{CreateDeckDto, DeckDto, DeckSettings};
-use crate::dto::tag::{CreateTagDto, TagDto};
-use crate::dto::user::{RegisterUserDto, User};
-use crate::error::CoreError;
-use crate::repo::card::CardRepo;
-use crate::repo::card_group::CardGroupRepo;
-use crate::repo::deck::DeckRepo;
-use crate::repo::tag::TagRepo;
-use crate::repo::user::UserRepo;
-use crate::tests::surreal_test_container::{SurrealDbTestContainer, SURREALDB_PORT};
-use crate::tests::{TestDbExt, TEST_DB};
+use crate::db::{TestDbExt, TEST_DB};
 use bon::builder;
-use std::sync::{Arc};
-use surrealdb::engine::remote::ws::{Client, Ws};
-use surrealdb::opt::auth::Root;
+use flashcard_gpt_core::dto::card::{CardDto, CreateCardDto};
+use flashcard_gpt_core::dto::card_group::{CardGroupDto, CreateCardGroupDto};
+use flashcard_gpt_core::dto::deck::{CreateDeckDto, DeckDto, DeckSettings};
+use flashcard_gpt_core::dto::tag::{CreateTagDto, TagDto};
+use flashcard_gpt_core::dto::user::{RegisterUserDto, User};
+use flashcard_gpt_core::repo::card::CardRepo;
+use flashcard_gpt_core::repo::card_group::CardGroupRepo;
+use flashcard_gpt_core::repo::deck::DeckRepo;
+use flashcard_gpt_core::repo::tag::TagRepo;
+use flashcard_gpt_core::repo::user::UserRepo;
+use std::sync::Arc;
 use surrealdb::sql::Thing;
-use surrealdb::Surreal;
-use testcontainers::runners::AsyncRunner;
-use testcontainers::ContainerAsync;
-use tracing::{error, info, span, Level};
+use testresult::TestResult;
+use tracing::{span, Level};
 
-pub struct TestDb {
-    pub container: ContainerAsync<SurrealDbTestContainer>,
-}
-
-
-impl TestDb {
-    pub async fn new() -> Result<Self, CoreError> {
-        let container = prepare_database().await?;
-        Ok(Self {
-            container,
-        })
-    }
-}
-
-pub async fn prepare_database(
-) -> Result<ContainerAsync<SurrealDbTestContainer>, CoreError> {
-    let node = SurrealDbTestContainer::default().start().await?;
-    let host_port = node.get_host_port_ipv4(SURREALDB_PORT).await?;
-    let url = format!("127.0.0.1:{host_port}");
-
-    let db: Surreal<Client> = Surreal::init();
-    db.connect::<Ws>(url).await?;
-    db.signin(Root {
-        username: "root",
-        password: "root",
-    })
-    .await?;
-
-    db.use_ns("test").use_db("test").await?;
-
-    let migration_data =
-        include_str!("../../db-migrations/migrations/20240902_185441_Initial.surql");
-    let mut response = db.query(migration_data).await?;
-
-    let mut last_error = None;
-
-    for (id, err) in response.take_errors() {
-        error!(%id, ?err, "Query failed");
-        last_error = Some(err);
-    }
-
-    if let Some(err) = last_error {
-        Err(err)?;
-    }
-
-    info!("Migration complete");
-
-    Ok(node)
-}
-
-pub async fn create_user(name: &str) -> Result<User, CoreError> {
+pub async fn create_user(name: &str) -> TestResult<User> {
     let db = TEST_DB.get_client().await?;
     let repo = UserRepo::new_user(db, span!(Level::INFO, "user_create"), true);
 
@@ -87,19 +31,21 @@ pub async fn create_user(name: &str) -> Result<User, CoreError> {
 }
 
 #[builder]
-pub async fn create_tag<U>(user: U, name: &str, slug: Option<&str>) -> Result<TagDto, CoreError>
+pub async fn create_tag<U>(user: U, name: &str, slug: Option<&str>) -> TestResult<TagDto>
 where
     U: Into<Thing>,
 {
     let db = TEST_DB.get_client().await?;
     let repo = TagRepo::new_tag(db, span!(Level::INFO, "tag_create"), false);
 
-    repo.create(CreateTagDto {
+    let tag = repo.create(CreateTagDto {
         name: Arc::from(name),
         slug: Arc::from(slug.unwrap_or(name)),
         user: user.into(),
     })
-    .await
+    .await?;
+    
+    Ok(tag)
 }
 
 #[builder]
@@ -109,7 +55,7 @@ pub async fn create_deck<U, Title, Tag, TagIter>(
     parent: Option<Thing>,
     settings: Option<DeckSettings>,
     tags: Option<TagIter>,
-) -> Result<DeckDto, CoreError>
+) -> TestResult<DeckDto>
 where
     TagIter: IntoIterator<Item = Tag>,
     Tag: Into<Thing>,
@@ -127,7 +73,7 @@ where
 
     let title = title.into();
 
-    repo.create(CreateDeckDto {
+    let deck = repo.create(CreateDeckDto {
         description: Some(Arc::from(format!("description for {}", title.clone()))),
         parent: parent.map(Into::into),
         settings,
@@ -135,7 +81,8 @@ where
         title,
         tags,
     })
-    .await
+    .await?;
+    Ok(deck)
 }
 
 #[builder]
@@ -148,7 +95,7 @@ pub async fn create_card<U, Tag, TagIter, Title>(
     difficulty: Option<u8>,
     importance: Option<u8>,
     tags: Option<TagIter>,
-) -> Result<CardDto, CoreError>
+) -> TestResult<CardDto>
 where
     TagIter: IntoIterator<Item = Tag>,
     Tag: Into<Thing>,
@@ -166,12 +113,12 @@ where
     let hints = hints
         .into_iter()
         .flat_map(|hints| hints.into_iter())
-        .map(|hint| hint.into()) 
+        .map(|hint| hint.into())
         .collect::<Vec<_>>();
 
     let title = title.into();
 
-    repo.create(CreateCardDto {
+    let card = repo.create(CreateCardDto {
         user: user.into(),
         title: title.clone(),
         front: front.map(Arc::from).or(Some(title.clone())),
@@ -182,7 +129,9 @@ where
         data: None,
         tags,
     })
-    .await
+    .await?;
+    
+    Ok(card)
 }
 
 #[builder]
@@ -193,7 +142,7 @@ pub async fn create_card_group<U, Tag, Card, TagIter, CardIter, Title>(
     difficulty: Option<u8>,
     importance: Option<u8>,
     tags: Option<TagIter>,
-) -> Result<CardGroupDto, CoreError>
+) -> TestResult<CardGroupDto>
 where
     CardIter: IntoIterator<Item = Card>,
     TagIter: IntoIterator<Item = Tag>,
@@ -211,18 +160,20 @@ where
         .flat_map(|t| t.into_iter())
         .map(|t| t.into())
         .collect::<Vec<_>>();
-    
+
     let cards = cards.into_iter().map(|c| c.into()).collect::<Vec<_>>();
-    
-    let card_group = repo.create(CreateCardGroupDto {
-        user: user.into(),
-        title: title.into(),
-        importance: importance.unwrap_or(0),
-        tags,
-        cards,
-        difficulty: difficulty.unwrap_or(0),
-        data: None,
-    }).await?;
-    
+
+    let card_group = repo
+        .create(CreateCardGroupDto {
+            user: user.into(),
+            title: title.into(),
+            importance: importance.unwrap_or(0),
+            tags,
+            cards,
+            difficulty: difficulty.unwrap_or(0),
+            data: None,
+        })
+        .await?;
+
     Ok(card_group)
 }

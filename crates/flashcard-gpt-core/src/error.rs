@@ -1,6 +1,4 @@
 use std::sync::Arc;
-#[cfg(test)]
-use testcontainers::TestcontainersError;
 use tracing_subscriber::util::TryInitError;
 
 #[derive(thiserror::Error, Debug)]
@@ -9,10 +7,6 @@ pub enum CoreError {
     DbError(#[from] surrealdb::Error),
     #[error("Failed to create: {0}")]
     CreateError(Arc<str>),
-
-    #[cfg(test)]
-    #[error("Failed to start test container: {0}")]
-    TestContainersError(#[from] TestcontainersError),
 
     #[error("Not found: {0}")]
     NotFound(Arc<str>),
