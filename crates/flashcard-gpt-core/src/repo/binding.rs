@@ -79,7 +79,7 @@ impl BindingRepo {
 mod tests {
     use super::*;
     use crate::error::CoreError;
-    use crate::tests::TEST_DB;
+    use crate::tests::{TestDbExt, TEST_DB};
     use serde_json::json;
 
     #[tokio::test]

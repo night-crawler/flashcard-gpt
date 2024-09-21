@@ -111,7 +111,7 @@ mod tests {
     use crate::tests::utils::{
         create_card, create_card_group, create_deck, create_tag, create_user,
     };
-    use crate::tests::TEST_DB;
+    use crate::tests::{TestDbExt, TEST_DB};
     use std::sync::Arc;
     use testresult::TestResult;
     use tracing::{span, Level};
@@ -161,7 +161,7 @@ mod tests {
             span!(Level::INFO, "deck_create_relation"),
             false,
         );
-        let user = create_user("deck_create_relation").await?;
+        let user = create_user("deck_create_relation_card").await?;
 
         let tag = create_tag().user(&user).name("name").call().await?;
 
@@ -216,7 +216,7 @@ mod tests {
             span!(Level::INFO, "deck_create_relation"),
             false,
         );
-        let user = create_user("deck_create_relation").await?;
+        let user = create_user("deck_create_relation_card_group").await?;
 
         let tag = create_tag().user(&user).name("name").call().await?;
 

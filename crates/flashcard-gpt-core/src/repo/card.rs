@@ -16,7 +16,7 @@ impl CardRepo {
 mod tests {
     use super::*;
     use crate::tests::utils::{create_card, create_tag, create_user};
-    use crate::tests::TEST_DB;
+    use crate::tests::{TestDbExt, TEST_DB};
     use serde_json::json;
     use std::sync::Arc;
     use testresult::TestResult;

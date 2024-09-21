@@ -21,7 +21,7 @@ pub fn init_tracing() -> Result<(), CoreError> {
         .with(filter_layer)
         .with(fmt_layer)
         .with(console_layer)
-        .init();
+        .try_init()?;
 
     Ok(())
 }

@@ -15,9 +15,8 @@ impl CardGroupRepo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::TEST_DB;
+    use crate::tests::{TestDbExt, TEST_DB};
     use std::sync::Arc;
-    use serde::de::Unexpected::Option;
     use serde_json::json;
     use testresult::TestResult;
     use tracing::{span, Level};

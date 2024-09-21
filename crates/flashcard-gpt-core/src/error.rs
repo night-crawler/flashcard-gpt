@@ -1,6 +1,7 @@
 use std::sync::Arc;
 #[cfg(test)]
 use testcontainers::TestcontainersError;
+use tracing_subscriber::util::TryInitError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum CoreError {
@@ -24,4 +25,7 @@ pub enum CoreError {
 
     #[error("Json parse error: {0}")]
     JsonParseError(#[from] serde_json::Error),
+
+    #[error("Tracking init error: {0:?}")]
+    TrackingInitError(#[from] TryInitError)
 }

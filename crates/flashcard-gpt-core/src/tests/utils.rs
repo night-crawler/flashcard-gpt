@@ -4,55 +4,39 @@ use crate::dto::deck::{CreateDeckDto, DeckDto, DeckSettings};
 use crate::dto::tag::{CreateTagDto, TagDto};
 use crate::dto::user::{RegisterUserDto, User};
 use crate::error::CoreError;
-use crate::ext::mutex::MutexExt;
 use crate::repo::card::CardRepo;
 use crate::repo::card_group::CardGroupRepo;
 use crate::repo::deck::DeckRepo;
 use crate::repo::tag::TagRepo;
 use crate::repo::user::UserRepo;
 use crate::tests::surreal_test_container::{SurrealDbTestContainer, SURREALDB_PORT};
-use crate::tests::TEST_DB;
+use crate::tests::{TestDbExt, TEST_DB};
 use bon::builder;
-use log::info;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
 use surrealdb::sql::Thing;
 use surrealdb::Surreal;
 use testcontainers::runners::AsyncRunner;
 use testcontainers::ContainerAsync;
-use tracing::{span, Level};
+use tracing::{error, info, span, Level};
 
-#[derive(Default)]
 pub struct TestDb {
-    container: Mutex<Option<ContainerAsync<SurrealDbTestContainer>>>,
-    client: Mutex<Option<Surreal<Client>>>,
+    pub container: ContainerAsync<SurrealDbTestContainer>,
 }
 
+
 impl TestDb {
-    pub const fn new() -> Self {
-        Self {
-            container: Mutex::new(None),
-            client: Mutex::new(None),
-        }
-    }
-
-    pub async fn get_client(&self) -> Result<Surreal<Client>, CoreError> {
-        let mut client = self.client.lock_sync()?;
-        if let Some(client) = client.as_mut() {
-            return Ok(client.clone());
-        }
-
-        let (container, db) = prepare_database().await?;
-        *client = Some(db);
-        *self.container.lock_sync()? = Some(container);
-        Ok(client.clone().unwrap())
+    pub async fn new() -> Result<Self, CoreError> {
+        let container = prepare_database().await?;
+        Ok(Self {
+            container,
+        })
     }
 }
 
 pub async fn prepare_database(
-) -> Result<(ContainerAsync<SurrealDbTestContainer>, Surreal<Client>), CoreError> {
-    let _ = pretty_env_logger::try_init();
+) -> Result<ContainerAsync<SurrealDbTestContainer>, CoreError> {
     let node = SurrealDbTestContainer::default().start().await?;
     let host_port = node.get_host_port_ipv4(SURREALDB_PORT).await?;
     let url = format!("127.0.0.1:{host_port}");
@@ -74,7 +58,7 @@ pub async fn prepare_database(
     let mut last_error = None;
 
     for (id, err) in response.take_errors() {
-        log::error!("{id}: {err}");
+        error!(%id, ?err, "Query failed");
         last_error = Some(err);
     }
 
@@ -84,7 +68,7 @@ pub async fn prepare_database(
 
     info!("Migration complete");
 
-    Ok((node, db))
+    Ok(node)
 }
 
 pub async fn create_user(name: &str) -> Result<User, CoreError> {
@@ -237,6 +221,7 @@ where
         tags,
         cards,
         difficulty: difficulty.unwrap_or(0),
+        data: None,
     }).await?;
     
     Ok(card_group)

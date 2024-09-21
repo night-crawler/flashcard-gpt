@@ -60,7 +60,7 @@ impl TagRepo {
 mod tests {
     use super::*;
     use crate::tests::utils::create_user;
-    use crate::tests::TEST_DB;
+    use crate::tests::{TestDbExt, TEST_DB};
     use std::sync::Arc;
     use testresult::TestResult;
     use tracing::{span, Level};
