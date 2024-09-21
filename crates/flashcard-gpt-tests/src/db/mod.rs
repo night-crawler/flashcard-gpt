@@ -8,7 +8,7 @@ use surrealdb::Surreal;
 use testresult::TestResult;
 use tokio::select;
 use tokio::sync::OnceCell;
-use tracing::{error, info};
+
 pub mod surreal_test_container;
 pub mod test_db;
 pub mod utils;
@@ -42,19 +42,16 @@ impl TestDbExt for OnceCell<TestDb> {
 
 #[dtor]
 fn kill_container() {
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    let Ok(rt) = tokio::runtime::Runtime::new() else {
+        return;
+    };
     rt.block_on(async move {
-        info!("Stopping SurrealDb container");
         if let Some(t) = TEST_DB.get() {
             select! {
-                res = t.container.stop() => match res {
-                    Ok(_) => {}
-                    Err(e) => error!("Error stopping container: {e:?}"),
-                },
+                _ = t.container.stop() => {}
                 // eventually it will stop
                 _ = tokio::time::sleep(tokio::time::Duration::from_secs(1)) => {}
             }
-            info!("Stopped SurrealDb container");
         }
     });
     rt.shutdown_background();
