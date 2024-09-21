@@ -208,27 +208,11 @@ impl Display for StateFields {
                 daily_limit,
             } => {
                 writeln!(f, "<b>id:</b> {}", id.to_string_or_dash())?;
-                writeln!(
-                    f,
-                    "<b>title:</b> {}",
-                    title.to_string_or_dash()
-                )?;
+                writeln!(f, "<b>title:</b> {}", title.to_string_or_dash())?;
                 writeln!(f, "<b>tags:</b> {}", tags.join_or_dash())?;
-                writeln!(
-                    f,
-                    "<b>description:</b> {}",
-                    description.to_string_or_dash()
-                )?;
-                writeln!(
-                    f,
-                    "<b>parent:</b> {}",
-                    parent.to_string_or_dash()
-                )?;
-                write!(
-                    f,
-                    "<b>daily_limit:</b> {}",
-                    daily_limit.to_string_or_dash()
-                )
+                writeln!(f, "<b>description:</b> {}", description.to_string_or_dash())?;
+                writeln!(f, "<b>parent:</b> {}", parent.to_string_or_dash())?;
+                write!(f, "<b>daily_limit:</b> {}", daily_limit.to_string_or_dash())
             }
             StateFields::Card {
                 id,
@@ -243,28 +227,12 @@ impl Display for StateFields {
                 deck,
             } => {
                 writeln!(f, "<b>id:</b> {}", id.to_string_or_dash())?;
-                writeln!(
-                    f,
-                    "<b>title:</b> {}",
-                    title.to_string_or_dash()
-                )?;
-                writeln!(
-                    f,
-                    "<b>front:</b> {}",
-                    front.to_string_or_dash()
-                )?;
+                writeln!(f, "<b>title:</b> {}", title.to_string_or_dash())?;
+                writeln!(f, "<b>front:</b> {}", front.to_string_or_dash())?;
                 writeln!(f, "<b>back:</b> {}", back.to_string_or_dash())?;
                 writeln!(f, "<b>hints:</b> {}", hints.join_or_dash())?;
-                writeln!(
-                    f,
-                    "<b>difficulty:</b> {}",
-                    difficulty.to_string_or_dash()
-                )?;
-                writeln!(
-                    f,
-                    "<b>importance:</b> {}",
-                    importance.to_string_or_dash()
-                )?;
+                writeln!(f, "<b>difficulty:</b> {}", difficulty.to_string_or_dash())?;
+                writeln!(f, "<b>importance:</b> {}", importance.to_string_or_dash())?;
                 writeln!(f, "<b>data:</b> {}", data.to_string_or_dash())?;
                 writeln!(f, "<b>tags:</b> {}", tags.join_or_dash())?;
                 write!(f, "<b>deck:</b> {}", deck.to_string_or_dash())

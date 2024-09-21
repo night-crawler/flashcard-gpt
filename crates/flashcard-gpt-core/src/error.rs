@@ -21,5 +21,5 @@ pub enum CoreError {
     JsonParseError(#[from] serde_json::Error),
 
     #[error("Tracking init error: {0:?}")]
-    TrackingInitError(#[from] TryInitError)
+    TrackingInitError(#[from] TryInitError),
 }

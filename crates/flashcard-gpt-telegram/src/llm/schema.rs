@@ -1,6 +1,6 @@
-use std::sync::Arc;
-use serde::{Deserialize, Serialize};
 use flashcard_gpt_core::reexports::json::Value;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GptCardGroup {
@@ -24,8 +24,10 @@ pub struct GptCard {
 }
 
 impl GptCardGroup {
-    pub fn from_gpt_response(input: &str) -> Result<Self, flashcard_gpt_core::reexports::json::Error> {
-        let input =  input.strip_prefix("```json").unwrap_or(input);
+    pub fn from_gpt_response(
+        input: &str,
+    ) -> Result<Self, flashcard_gpt_core::reexports::json::Error> {
+        let input = input.strip_prefix("```json").unwrap_or(input);
         let input = input.strip_prefix("```").unwrap_or(input);
         let input = input.strip_suffix("```").unwrap_or(input);
 
@@ -33,11 +35,10 @@ impl GptCardGroup {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use testresult::TestResult;
     use super::*;
+    use testresult::TestResult;
 
     #[test]
     fn test_parse() -> TestResult {

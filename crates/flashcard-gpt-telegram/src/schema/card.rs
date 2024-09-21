@@ -1,10 +1,10 @@
-use std::collections::BTreeSet;
 use crate::chat_manager::ChatManager;
 use crate::command::CardCommand;
+use crate::patch_state;
 use crate::schema::receive_next;
 use crate::state::{State, StateFields};
-use crate::patch_state;
 use anyhow::anyhow;
+use std::collections::BTreeSet;
 
 use crate::ext::StrExt;
 use flashcard_gpt_core::dto::card::CreateCardDto;
@@ -184,11 +184,11 @@ async fn receive_card_tags(manager: ChatManager) -> anyhow::Result<()> {
         return Ok(());
     };
 
-    let fields = patch_state!(manager, StateFields::Card { tags }, |tags: &mut BTreeSet<
-        Arc<str>,
-    >| {
-        tags.extend(next_tags)
-    });
+    let fields = patch_state!(
+        manager,
+        StateFields::Card { tags },
+        |tags: &mut BTreeSet<Arc<str>>| { tags.extend(next_tags) }
+    );
     manager.update_state(State::ReceiveCardTags(fields)).await?;
     manager.send_tag_menu().await?;
 
@@ -200,9 +200,7 @@ async fn receive_card_deck(manager: ChatManager) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn create_card(
-    manager: ChatManager,
-) -> anyhow::Result<()> {
+async fn create_card(manager: ChatManager) -> anyhow::Result<()> {
     let StateFields::Card {
         id: _id,
         title,
@@ -222,7 +220,8 @@ async fn create_card(
 
     let user = &manager.binding.user;
 
-    let tags = manager.repositories
+    let tags = manager
+        .repositories
         .get_or_create_tags(user.as_ref(), tags)
         .await?
         .into_iter()
@@ -231,7 +230,8 @@ async fn create_card(
 
     let title = title.ok_or_else(|| anyhow!("Title was not provided"))?;
 
-    let card = manager.repositories
+    let card = manager
+        .repositories
         .cards
         .create(CreateCardDto {
             user: user.id.clone(),
@@ -251,14 +251,19 @@ async fn create_card(
         .await?;
 
     if let Some(deck) = deck {
-        let rel = manager.repositories.decks.relate_card(CreateDeckCardDto {
-            deck: deck.as_thing()?,
-            card: card.id.clone(),
-        }).await?;
-        manager.send_message(format!("Related card to deck: {rel:?}"))
+        let rel = manager
+            .repositories
+            .decks
+            .relate_card(CreateDeckCardDto {
+                deck: deck.as_thing()?,
+                card: card.id.clone(),
+            })
+            .await?;
+        manager
+            .send_message(format!("Related card to deck: {rel:?}"))
             .await?;
     }
-    
+
     manager.dialogue.exit().await?;
     Ok(())
 }

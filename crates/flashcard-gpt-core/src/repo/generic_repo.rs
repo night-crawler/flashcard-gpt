@@ -103,7 +103,7 @@ where
         let result: Vec<Read> = response.take(0)?;
         Ok(result)
     }
-    
+
     pub async fn delete(&self, id: impl Into<Thing>) -> Result<(), CoreError> {
         let query = format!(
             r#"

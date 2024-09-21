@@ -1,7 +1,9 @@
 use crate::chat_manager::ChatManager;
 use crate::command::DeckCommand;
 use crate::db::repositories::Repositories;
+use crate::ext::StrExt;
 use crate::schema::receive_next;
+use crate::schema::root::cancel;
 use crate::state::{State, StateFields};
 use crate::{patch_state, FlashGptDialogue};
 use anyhow::anyhow;
@@ -10,8 +12,6 @@ use std::sync::Arc;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Message, Update};
-use crate::ext::StrExt;
-use crate::schema::root::cancel;
 
 pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let deck_command_handler = teloxide::filter_command::<DeckCommand, _>().branch(
@@ -31,7 +31,6 @@ pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
                 .branch(
                     teloxide::filter_command::<DeckCommand, _>()
                         .branch(case![DeckCommand::Next].endpoint(receive_next)),
-                    
                 )
                 .endpoint(receive_deck_tags),
         )
@@ -173,7 +172,12 @@ async fn create_deck(
     };
 
     let parent = if let Some(parent) = parent {
-        repositories.decks.get_by_id(parent.as_thing()?).await?.id.into()
+        repositories
+            .decks
+            .get_by_id(parent.as_thing()?)
+            .await?
+            .id
+            .into()
     } else {
         None
     };

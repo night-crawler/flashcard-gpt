@@ -11,4 +11,3 @@ impl CardRepo {
         Self::new(db, span, "card", "user, tags", enable_transactions)
     }
 }
-

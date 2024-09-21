@@ -1,19 +1,19 @@
+use serde::de::{SeqAccess, Visitor};
+use serde::{Deserialize, Deserializer};
 use std::fmt;
 use std::marker::PhantomData;
-use serde::{Deserialize, Deserializer};
-use serde::de::{SeqAccess, Visitor};
 
 pub mod binding;
 pub mod card;
+pub mod card_group;
 pub mod deck;
+pub mod deck_card;
+pub mod deck_card_group;
 mod global_settings;
+pub mod history;
 pub mod tag;
 pub mod time;
 pub mod user;
-pub mod deck_card;
-pub mod history;
-pub mod deck_card_group;
-pub mod card_group;
 
 fn skip_nulls<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
 where

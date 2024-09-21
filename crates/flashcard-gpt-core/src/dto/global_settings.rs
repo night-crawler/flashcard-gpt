@@ -1,7 +1,7 @@
-use bon::Builder;
 use crate::dto::time::Time;
 use crate::dto::user::User;
 use crate::reexports::db::sql::Thing;
+use bon::Builder;
 use chrono::Duration;
 use humantime::format_duration;
 use humantime::parse_duration;
@@ -74,7 +74,6 @@ impl From<&GlobalSettingsDto> for Thing {
         value.id.clone()
     }
 }
-
 
 #[cfg(test)]
 mod tests {

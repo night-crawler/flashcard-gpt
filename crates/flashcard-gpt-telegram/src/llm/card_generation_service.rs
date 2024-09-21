@@ -221,11 +221,7 @@ impl Solution {
 }
         "#;
         service.generate_code_card(code).await?;
-        
 
         Ok(())
     }
-    
-   
 }
-

@@ -2,9 +2,9 @@ use crate::dto::card::CardDto;
 use crate::dto::deck::DeckDto;
 use crate::dto::time::Time;
 use crate::reexports::db::sql::Thing;
+use bon::Builder;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use bon::Builder;
 
 #[derive(Debug, Serialize, Deserialize, Builder)]
 pub struct DeckCardDto {

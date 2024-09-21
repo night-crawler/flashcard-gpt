@@ -38,13 +38,14 @@ where
     let db = TEST_DB.get_client().await?;
     let repo = TagRepo::new_tag(db, span!(Level::INFO, "tag_create"), false);
 
-    let tag = repo.create(CreateTagDto {
-        name: Arc::from(name),
-        slug: Arc::from(slug.unwrap_or(name)),
-        user: user.into(),
-    })
-    .await?;
-    
+    let tag = repo
+        .create(CreateTagDto {
+            name: Arc::from(name),
+            slug: Arc::from(slug.unwrap_or(name)),
+            user: user.into(),
+        })
+        .await?;
+
     Ok(tag)
 }
 
@@ -73,15 +74,16 @@ where
 
     let title = title.into();
 
-    let deck = repo.create(CreateDeckDto {
-        description: Some(Arc::from(format!("description for {}", title.clone()))),
-        parent: parent.map(Into::into),
-        settings,
-        user: user.into(),
-        title,
-        tags,
-    })
-    .await?;
+    let deck = repo
+        .create(CreateDeckDto {
+            description: Some(Arc::from(format!("description for {}", title.clone()))),
+            parent: parent.map(Into::into),
+            settings,
+            user: user.into(),
+            title,
+            tags,
+        })
+        .await?;
     Ok(deck)
 }
 
@@ -118,19 +120,20 @@ where
 
     let title = title.into();
 
-    let card = repo.create(CreateCardDto {
-        user: user.into(),
-        title: title.clone(),
-        front: front.map(Arc::from).or(Some(title.clone())),
-        back: back.map(Arc::from).or(Some(title.clone())),
-        hints,
-        difficulty: difficulty.unwrap_or(0),
-        importance: importance.unwrap_or(0),
-        data: None,
-        tags,
-    })
-    .await?;
-    
+    let card = repo
+        .create(CreateCardDto {
+            user: user.into(),
+            title: title.clone(),
+            front: front.map(Arc::from).or(Some(title.clone())),
+            back: back.map(Arc::from).or(Some(title.clone())),
+            hints,
+            difficulty: difficulty.unwrap_or(0),
+            importance: importance.unwrap_or(0),
+            data: None,
+            tags,
+        })
+        .await?;
+
     Ok(card)
 }
 

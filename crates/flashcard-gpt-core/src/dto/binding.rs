@@ -1,8 +1,8 @@
 use crate::dto::time::Time;
 use crate::dto::user::User;
+use bon::Builder;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use bon::Builder;
 use surrealdb::sql::Thing;
 
 #[derive(Debug, Serialize, Deserialize, Builder)]
@@ -24,7 +24,6 @@ pub struct GetOrCreateBindingDto {
     pub password: Arc<str>,
     pub data: Option<serde_json::Value>,
 }
-
 
 impl From<BindingDto> for Thing {
     fn from(value: BindingDto) -> Self {

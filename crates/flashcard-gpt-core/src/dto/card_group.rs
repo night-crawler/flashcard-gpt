@@ -1,14 +1,13 @@
-use std::sync::Arc;
-use bon::Builder;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use surrealdb::sql::Thing;
+use super::skip_nulls;
 use crate::dto::card::CardDto;
 use crate::dto::tag::TagDto;
 use crate::dto::time::Time;
 use crate::dto::user::User;
-use super::skip_nulls;
-
+use bon::Builder;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::sync::Arc;
+use surrealdb::sql::Thing;
 
 #[derive(Debug, Serialize, Deserialize, Builder)]
 pub struct CardGroupDto {
@@ -28,7 +27,6 @@ pub struct CardGroupDto {
     #[serde(deserialize_with = "skip_nulls")]
     pub tags: Vec<Arc<TagDto>>,
 }
-
 
 #[derive(Debug, Serialize, Deserialize, Builder)]
 pub struct CreateCardGroupDto {

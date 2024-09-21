@@ -36,4 +36,3 @@ impl UserRepo {
         Ok(created_user)
     }
 }
-

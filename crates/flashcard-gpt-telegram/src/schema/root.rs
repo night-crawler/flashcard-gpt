@@ -46,7 +46,9 @@ async fn handle_root_help(manager: ChatManager) -> anyhow::Result<()> {
 pub async fn cancel(manager: ChatManager) -> anyhow::Result<()> {
     manager.send_message("Cancelling the dialogue.").await?;
     manager.dialogue.exit().await?;
-    manager.update_state(State::InsideRootMenu(StateFields::Empty)).await?;
+    manager
+        .update_state(State::InsideRootMenu(StateFields::Empty))
+        .await?;
     Ok(())
 }
 
@@ -159,7 +161,7 @@ pub(super) async fn receive_root_menu_item(
             manager.update_state(State::ReceiveCardTags(fields)).await?;
             manager.send_tag_menu().await?;
         }
-        
+
         (Some(State::ReceiveDeckParent(mut fields)), next_parent) => {
             if let StateFields::Deck { parent, .. } = &mut fields {
                 parent.replace(next_parent.into());

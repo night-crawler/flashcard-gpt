@@ -1,7 +1,7 @@
 use crate::dto::time::Time;
+use bon::Builder;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use bon::Builder;
 use surrealdb::sql::Thing;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Builder)]
@@ -19,7 +19,6 @@ pub struct RegisterUserDto {
     pub name: Arc<str>,
     pub password: Arc<str>,
 }
-
 
 impl From<User> for Thing {
     fn from(value: User) -> Self {

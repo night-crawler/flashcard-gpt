@@ -14,7 +14,6 @@ impl<T: fmt::Display> OptionDisplayExt for Option<T> {
     }
 }
 
-
 pub trait DisplayJoinOrDash {
     fn join_or_dash(&self) -> String;
 }
@@ -36,13 +35,10 @@ where
     }
 }
 
-
-
-
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
     use super::*;
+    use std::collections::BTreeSet;
 
     #[test]
     fn test_option_display_ext() {
@@ -60,10 +56,10 @@ mod tests {
 
         assert_eq!(vec.join_or_dash(), "1, 2, 3");
         assert_eq!(empty.join_or_dash(), "-");
-        
+
         let set = BTreeSet::from([1, 2, 3]);
         let empty_set: BTreeSet<i32> = BTreeSet::new();
-        
+
         assert_eq!(set.join_or_dash(), "1, 2, 3");
         assert_eq!(empty_set.join_or_dash(), "-");
     }
