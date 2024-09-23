@@ -15,9 +15,49 @@ use surrealdb::sql::Thing;
 use testresult::TestResult;
 use tracing::{span, Level};
 
-pub async fn create_user(name: &str) -> TestResult<User> {
+pub async fn create_user_repo() -> TestResult<UserRepo> {
     let db = TEST_DB.get_client().await?;
-    let repo = UserRepo::new_user(db, span!(Level::INFO, "user_create"), true);
+    Ok(UserRepo::new_user(
+        db,
+        span!(Level::INFO, "user_repo"),
+        true,
+    ))
+}
+
+pub async fn create_tag_repo() -> TestResult<TagRepo> {
+    let db = TEST_DB.get_client().await?;
+    Ok(TagRepo::new_tag(db, span!(Level::INFO, "tag_repo"), true))
+}
+
+pub async fn create_deck_repo() -> TestResult<DeckRepo> {
+    let db = TEST_DB.get_client().await?;
+    Ok(DeckRepo::new_deck(
+        db,
+        span!(Level::INFO, "deck_repo"),
+        true,
+    ))
+}
+
+pub async fn create_card_repo() -> TestResult<CardRepo> {
+    let db = TEST_DB.get_client().await?;
+    Ok(CardRepo::new_card(
+        db,
+        span!(Level::INFO, "card_repo"),
+        true,
+    ))
+}
+
+pub async fn create_card_group_repo() -> TestResult<CardGroupRepo> {
+    let db = TEST_DB.get_client().await?;
+    Ok(CardGroupRepo::new_card_group(
+        db,
+        span!(Level::INFO, "card_group_repo"),
+        true,
+    ))
+}
+
+pub async fn create_user(name: &str) -> TestResult<User> {
+    let repo = create_user_repo().await?;
 
     let user = repo
         .create_user(RegisterUserDto {
@@ -35,8 +75,7 @@ pub async fn create_tag<U>(user: U, name: &str, slug: Option<&str>) -> TestResul
 where
     U: Into<Thing>,
 {
-    let db = TEST_DB.get_client().await?;
-    let repo = TagRepo::new_tag(db, span!(Level::INFO, "tag_create"), false);
+    let repo = create_tag_repo().await?;
 
     let tag = repo
         .create(CreateTagDto {
@@ -63,8 +102,7 @@ where
     U: Into<Thing>,
     Title: Into<Arc<str>>,
 {
-    let db = TEST_DB.get_client().await?;
-    let repo = DeckRepo::new_deck(db, span!(Level::INFO, "deck_create"), false);
+    let repo = create_deck_repo().await?;
 
     let tags = if let Some(tags) = tags {
         tags.into_iter().map(|t| t.into()).collect()
@@ -104,8 +142,7 @@ where
     U: Into<Thing>,
     Title: Into<Arc<str>>,
 {
-    let db = TEST_DB.get_client().await?;
-    let repo = CardRepo::new_card(db, span!(Level::INFO, "card_create"), false);
+    let repo = create_card_repo().await?;
 
     let tags = tags
         .into_iter()
@@ -154,9 +191,7 @@ where
     U: Into<Thing>,
     Title: Into<Arc<str>>,
 {
-    let db = TEST_DB.get_client().await?;
-    let repo =
-        CardGroupRepo::new_card_group(db.clone(), span!(Level::INFO, "card_group_create"), false);
+    let repo = create_card_group_repo().await?;
 
     let tags = tags
         .into_iter()

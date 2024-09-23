@@ -11,6 +11,7 @@ pub mod deck_card;
 pub mod deck_card_group;
 mod global_settings;
 pub mod history;
+pub mod llm;
 pub mod tag;
 pub mod time;
 pub mod user;

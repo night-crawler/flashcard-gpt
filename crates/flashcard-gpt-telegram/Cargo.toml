@@ -8,27 +8,26 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-teloxide = { version = "0.13", features = ["macros"] }
-tokio = { version = "1.8", features = ["rt-multi-thread", "macros"] }
+tokio = { workspace = true }
 flashcard-gpt-core = { path = "../flashcard-gpt-core" }
-anyhow = "1"
+teloxide = { workspace = true }
+anyhow = { workspace = true }
 
-strum = "0.26"
-strum_macros = "0.26"
+strum = { workspace = true }
+strum_macros = { workspace = true }
 
-slug = "0.1"
 paste = "1"
-serde = { version = "1.0.210", features = ["derive"] }
+serde = { workspace = true }
 
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["fmt", "json"] }
-console-subscriber = { version = "0.4", features = ["env-filter"] }
-atty = { version = "0.2", features = [] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+console-subscriber = { workspace = true }
+atty = { workspace = true }
 
-itertools = "0.13"
+itertools = { workspace = true }
 
-llm-chain = "0.13"
-llm-chain-openai = "0.13"
+llm-chain = { workspace = true }
+llm-chain-openai = { workspace = true }
 
 [dependencies.uuid]
 version = "1.10.0"
@@ -40,3 +39,4 @@ features = [
 
 [dev-dependencies]
 testresult = "0.4"
+flashcard-gpt-tests = { path = "../flashcard-gpt-tests" }

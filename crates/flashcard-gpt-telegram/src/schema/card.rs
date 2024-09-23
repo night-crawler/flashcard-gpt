@@ -222,6 +222,7 @@ async fn create_card(manager: ChatManager) -> anyhow::Result<()> {
 
     let tags = manager
         .repositories
+        .tags
         .get_or_create_tags(user.as_ref(), tags)
         .await?
         .into_iter()

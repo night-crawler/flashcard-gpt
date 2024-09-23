@@ -2,6 +2,7 @@ use crate::dto::tag::{CreateTagDto, TagDto};
 use crate::error::CoreError;
 use crate::ext::response_ext::ResponseExt;
 use crate::repo::generic_repo::GenericRepo;
+use itertools::Itertools;
 use std::sync::Arc;
 use surrealdb::engine::remote::ws::Client;
 use surrealdb::sql::Thing;
@@ -16,6 +17,24 @@ impl TagRepo {
     }
 
     pub async fn get_or_create_tags(
+        &self,
+        user_id: impl Into<Thing>,
+        tags: impl IntoIterator<Item = Arc<str>>,
+    ) -> Result<Vec<TagDto>, CoreError> {
+        // we assume that slug after slugify stays the same
+        let tags = tags
+            .into_iter()
+            .unique()
+            .map(|tag| {
+                let slug = slug::slugify(&tag);
+                (tag, Arc::from(slug))
+            })
+            .collect();
+
+        self.get_or_create_tags_raw(user_id, tags).await
+    }
+
+    pub async fn get_or_create_tags_raw(
         &self,
         user_id: impl Into<Thing>,
         tags: Vec<(Arc<str>, Arc<str>)>,

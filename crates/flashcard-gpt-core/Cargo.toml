@@ -8,22 +8,29 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-surrealdb = { version = "2" }
-serde = { version = "1", features = ["derive", "rc"] }
-tokio = { version = "1.40", features = ["full"] }
-chrono = { version = "0.4", features = ["default", "serde"] }
-chrono-tz = { version = "0.10", features = ["default", "serde"] }
-humantime = "2.1"
-humantime-serde = "1.1"
-thiserror = "1"
-once_cell = "1.19"
-serde_json = "1"
-bon = "2.3"
+tokio = { workspace = true }
+surrealdb = { workspace = true }
+serde = { workspace = true }
+chrono = { workspace = true }
+chrono-tz = { workspace = true }
+humantime = { workspace = true }
+humantime-serde = { workspace = true }
+thiserror = { workspace = true }
+once_cell = { workspace = true }
+serde_json = { workspace = true }
+bon = { workspace = true }
 
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["fmt", "json"] }
-console-subscriber = { version = "0.4", features = ["env-filter"] }
-atty = { version = "0.2", features = [] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+console-subscriber = { workspace = true }
+atty = { workspace = true }
+
+llm-chain = { workspace = true }
+llm-chain-openai = { workspace = true }
+slug = { workspace = true }
+itertools = { workspace = true }
+
+markdown = "1.0.0-alpha.20"
 
 [dev-dependencies]
 flashcard-gpt-tests = { path = "../flashcard-gpt-tests" }

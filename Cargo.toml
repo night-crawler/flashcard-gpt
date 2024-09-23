@@ -9,3 +9,34 @@ edition = "2021"
 license = "MIT"
 homepage = "https://github.com/night-crawler/flashcard_gpt"
 repository = "https://github.com/night-crawler/flashcard_gpt"
+
+[workspace.dependencies]
+itertools = "0.13"
+tokio = { version = "1.40", features = ["rt-multi-thread", "macros"] }
+
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "json"] }
+console-subscriber = { version = "0.4", features = ["env-filter"] }
+atty = { version = "0.2", features = [] }
+
+teloxide = { version = "0.13", features = ["macros"] }
+
+strum = "0.26"
+strum_macros = "0.26"
+
+surrealdb = { version = "2" }
+
+serde = { version = "1", features = ["derive", "rc"] }
+chrono = { version = "0.4", features = ["default", "serde"] }
+chrono-tz = { version = "0.10", features = ["default", "serde"] }
+humantime = "2.1"
+humantime-serde = "1.1"
+thiserror = "1"
+once_cell = "1.19"
+serde_json = "1"
+bon = "2.3"
+slug = "0.1"
+anyhow = "1"
+
+llm-chain = "0.13"
+llm-chain-openai = "0.13"

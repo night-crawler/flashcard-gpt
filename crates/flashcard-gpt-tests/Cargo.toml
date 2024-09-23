@@ -8,11 +8,11 @@ homepage.workspace = true
 repository.workspace = true
 
 [dependencies]
-surrealdb = { version = "2" }
+surrealdb = { workspace = true }
 testcontainers = "0.22"
 testresult = "0.4"
 ctor = "0.2"
 flashcard-gpt-core = { path = "../flashcard-gpt-core" }
-tracing = "0.1"
-tokio = { version = "1.40", features = ["full"] }
-bon = "2.3"
+tracing = { workspace = true }
+tokio = { workspace = true }
+bon = { workspace = true }

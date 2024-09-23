@@ -22,4 +22,22 @@ pub enum CoreError {
 
     #[error("Tracking init error: {0:?}")]
     TrackingInitError(#[from] TryInitError),
+
+    #[error("Format and execute error: {0}")]
+    LlmFormatAndExecuteError(#[from] llm_chain::frame::FormatAndExecuteError),
+
+    #[error("Executor error: {0}")]
+    LlmExecutorError(#[from] llm_chain::traits::ExecutorError),
+
+    #[error("No LLM steps provided: {0}")]
+    LlmNoLlmStepsProvided(Arc<str>),
+
+    #[error("First step must have exactly one input parameter, but got {0}")]
+    LlmFirstStepInputParamError(Arc<str>),
+
+    #[error("LLM Body Extract error: {0}")]
+    LlmBodyExtractError(Arc<str>),
+
+    #[error("LLM result is missing: {0}")]
+    LlmResultMissing(Arc<str>),
 }

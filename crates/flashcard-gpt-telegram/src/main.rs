@@ -15,6 +15,9 @@ pub mod message_render;
 pub mod schema;
 pub mod state;
 
+use llm_chain::options::{ModelRef, Opt, Options};
+use llm_chain::traits::Executor as _;
+use llm_chain_openai::chatgpt::Executor;
 use crate::db::repositories::Repositories;
 use crate::schema::schema;
 use crate::state::{FlashGptDialogue, State};
@@ -22,12 +25,12 @@ use flashcard_gpt_core::logging::init_tracing;
 use flashcard_gpt_core::reexports::db::engine::remote::ws::{Client, Ws};
 use flashcard_gpt_core::reexports::db::opt::auth::Root;
 use flashcard_gpt_core::reexports::db::Surreal;
-use llm_chain::executor;
-use llm_chain_openai::chatgpt::Executor;
 use teloxide::adaptors::DefaultParseMode;
 use teloxide::types::ParseMode;
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
 use tracing::{info, span, Level};
+use flashcard_gpt_core::llm::card_generator::CardGenerator;
+use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -46,6 +49,21 @@ async fn main() -> anyhow::Result<()> {
 
     let repositories = Repositories::new(db.clone(), span!(Level::INFO, "root"));
 
+    let openai_api_key = std::env::var("OPENAI_API_KEY")?;
+    let mut options = Options::builder();
+    options.add_option(Opt::ApiKey(openai_api_key));
+    options.add_option(Opt::Model(ModelRef::from_model_name("chatgpt-4o-latest")));
+    let options = options.build();
+    let exec = Executor::new_with_options(options)?;
+    let card_generator = CardGenerator::new(exec);
+    let card_generation_service = CardGeneratorService::new(
+        card_generator,
+        repositories.cards.clone(),
+        repositories.card_groups.clone(),
+        repositories.decks.clone(),
+        repositories.tags.clone(),
+    );
+
     let span = span!(Level::INFO, "root");
 
     let bot: DefaultParseMode<Bot> = Bot::from_env().parse_mode(ParseMode::Html);
@@ -54,7 +72,8 @@ async fn main() -> anyhow::Result<()> {
         .dependencies(dptree::deps![
             InMemStorage::<State>::new(),
             repositories,
-            span
+            span,
+            card_generation_service
         ])
         .enable_ctrlc_handler()
         .build()

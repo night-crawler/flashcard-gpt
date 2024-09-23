@@ -185,6 +185,7 @@ async fn create_deck(
     let user_id = manager.binding.user.id.clone();
 
     let tags = repositories
+        .tags
         .get_or_create_tags(user_id.clone(), tags)
         .await?
         .into_iter()

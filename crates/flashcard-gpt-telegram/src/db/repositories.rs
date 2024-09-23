@@ -1,18 +1,16 @@
 use crate::ext::binding::{BindingEntity, BindingExt};
 use crate::ext::menu_repr::IteratorMenuReprExt;
 use flashcard_gpt_core::dto::binding::BindingDto;
-use flashcard_gpt_core::dto::tag::TagDto;
 use flashcard_gpt_core::error::CoreError;
 use flashcard_gpt_core::reexports::db::engine::remote::ws::Client;
 use flashcard_gpt_core::reexports::db::sql::Thing;
 use flashcard_gpt_core::reexports::db::Surreal;
 use flashcard_gpt_core::repo::binding::BindingRepo;
 use flashcard_gpt_core::repo::card::CardRepo;
+use flashcard_gpt_core::repo::card_group::CardGroupRepo;
 use flashcard_gpt_core::repo::deck::DeckRepo;
 use flashcard_gpt_core::repo::tag::TagRepo;
 use flashcard_gpt_core::repo::user::UserRepo;
-use itertools::Itertools;
-use std::sync::Arc;
 use teloxide::types::InlineKeyboardMarkup;
 use tracing::Span;
 
@@ -22,6 +20,7 @@ pub struct Repositories {
     pub decks: DeckRepo,
     pub users: UserRepo,
     pub cards: CardRepo,
+    pub card_groups: CardGroupRepo,
     pub bindings: BindingRepo,
 }
 
@@ -32,6 +31,7 @@ impl Repositories {
             decks: DeckRepo::new_deck(db.clone(), span.clone(), true),
             users: UserRepo::new_user(db.clone(), span.clone(), true),
             cards: CardRepo::new_card(db.clone(), span.clone(), true),
+            card_groups: CardGroupRepo::new_card_group(db.clone(), span.clone(), true),
             bindings: BindingRepo::new_binding(db, span, true),
         }
     }
@@ -52,24 +52,6 @@ impl Repositories {
             .await?
             .into_iter()
             .into_menu_repr())
-    }
-
-    pub async fn get_or_create_tags(
-        &self,
-        user_id: impl Into<Thing>,
-        tags: impl IntoIterator<Item = Arc<str>>,
-    ) -> anyhow::Result<Vec<TagDto>> {
-        // we assume that slug after slugify stays the same
-        let tags = tags
-            .into_iter()
-            .unique()
-            .map(|tag| {
-                let slug = slug::slugify(&tag);
-                (tag, Arc::from(slug))
-            })
-            .collect();
-
-        Ok(self.tags.get_or_create_tags(user_id, tags).await?)
     }
 
     pub async fn get_binding(

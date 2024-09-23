@@ -6,6 +6,7 @@
 pub mod dto;
 pub mod error;
 pub mod ext;
+pub mod llm;
 pub mod logging;
 pub mod reexports;
 pub mod repo;

@@ -1,6 +1,6 @@
 use flashcard_gpt_core::dto::tag::CreateTagDto;
 use flashcard_gpt_core::repo::tag::TagRepo;
-use flashcard_gpt_tests::db::utils::create_user;
+use flashcard_gpt_tests::db::utils::{create_tag_repo, create_user};
 use flashcard_gpt_tests::db::TestDbExt;
 use flashcard_gpt_tests::db::TEST_DB;
 use std::sync::Arc;
@@ -41,8 +41,7 @@ async fn test_create() -> TestResult {
 
 #[tokio::test]
 async fn test_get_or_create_tags() -> TestResult {
-    let db = TEST_DB.get_client().await?;
-    let repo = TagRepo::new_tag(db, span!(Level::INFO, "tag_create"), true);
+    let repo = create_tag_repo().await?;
     let user = create_user("tag_create_22").await?;
 
     repo.create(CreateTagDto {
@@ -58,11 +57,11 @@ async fn test_get_or_create_tags() -> TestResult {
     ];
 
     let created_tags = repo
-        .get_or_create_tags(user.id.clone(), tags.clone())
+        .get_or_create_tags_raw(user.id.clone(), tags.clone())
         .await?;
     assert_eq!(created_tags.len(), 2, "{created_tags:#?}");
 
-    let created_tags = repo.get_or_create_tags(user.id.clone(), tags).await?;
+    let created_tags = repo.get_or_create_tags_raw(user.id.clone(), tags).await?;
     assert_eq!(created_tags.len(), 2, "{created_tags:#?}");
 
     Ok(())
@@ -86,7 +85,7 @@ async fn test_duplicates() {
         true,
     );
     let created_tags = repo
-        .get_or_create_tags(user.id.clone(), unique_tag_pairs.clone())
+        .get_or_create_tags_raw(user.id.clone(), unique_tag_pairs.clone())
         .await
         .unwrap();
     assert_eq!(
@@ -101,7 +100,7 @@ async fn test_duplicates() {
     ];
 
     let created_tags = repo
-        .get_or_create_tags(user.id.clone(), next_tags.clone())
+        .get_or_create_tags_raw(user.id.clone(), next_tags.clone())
         .await
         .unwrap();
     assert_eq!(created_tags.len(), next_tags.len(), "{created_tags:#?}");
