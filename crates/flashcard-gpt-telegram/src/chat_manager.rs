@@ -130,6 +130,10 @@ impl ChatManager {
     pub fn parse_html(&self) -> Option<Arc<str>> {
         self.message.as_deref()?.html_text().map(Arc::from)
     }
+    
+    pub fn parse_text(&self) -> Option<Arc<str>> {
+        self.message.as_deref()?.text().map(Arc::from)
+    }
 
     pub fn parse_integer<T>(&self) -> Option<T>
     where

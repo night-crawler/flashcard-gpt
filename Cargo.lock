@@ -1210,6 +1210,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
 
 [[package]]
+name = "delegate"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5060bb0febb73fa907273f8a7ed17ab4bf831d585eac835b28ec24a1e2460956"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.77",
+]
+
+[[package]]
+name = "delegate-attr"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51aac4c99b2e6775164b412ea33ae8441b2fde2dbf05a20bc0052a63d08c475b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.77",
+]
+
+[[package]]
 name = "deranged"
 version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1497,6 +1519,8 @@ dependencies = [
  "anyhow",
  "atty",
  "console-subscriber",
+ "delegate",
+ "delegate-attr",
  "flashcard-gpt-core",
  "flashcard-gpt-tests",
  "itertools 0.13.0",
@@ -1504,6 +1528,7 @@ dependencies = [
  "llm-chain-openai",
  "paste",
  "serde",
+ "serde_json",
  "strum 0.26.3",
  "strum_macros 0.26.4",
  "teloxide",

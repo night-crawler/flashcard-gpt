@@ -1,4 +1,4 @@
-use crate::ext::message::MessageExt;
+use paste::paste;
 use crate::ext::rendering::{DisplayJoinOrDash, OptionDisplayExt};
 use flashcard_gpt_core::reexports::json::Value;
 use std::collections::BTreeSet;
@@ -10,6 +10,7 @@ use strum_macros::{AsRefStr, EnumProperty};
 use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::prelude::Dialogue;
 use teloxide::types::Message;
+use crate::message_render::RenderMessageTextHelper;
 
 pub type FlashGptDialogue = Dialogue<State, InMemStorage<State>>;
 
@@ -59,6 +60,15 @@ pub enum State {
     ReceiveCardDeck(StateFields),
     #[strum(props(name = "Card Creation Confirmation (/next)"))]
     ReceiveCardConfirm(StateFields),
+
+    #[strum(props(name = "a deck that will be used for the card generation"))]
+    ReceiveGenerateCardDeck(StateFields),
+
+    #[strum(props(name = "Card Prompt"))]
+    ReceiveGenerateCardPrompt(StateFields),
+
+    #[strum(props(name = "Confirm card generation"))]
+    ReceiveGenerateCardConfirm(StateFields),
 }
 
 impl Default for State {
@@ -74,97 +84,21 @@ pub struct StateDescription {
     pub prompt: Arc<str>,
 }
 
+
 impl State {
+
     pub fn get_state_description(&self, msg: Option<&Message>) -> StateDescription {
-        let text = msg.map(|msg| msg.get_text()).unwrap_or_default();
+        let text = msg.and_then(|msg| msg.html_text()).unwrap_or_default();
         let name = self.get_str("name").unwrap_or(self.as_ref());
         let current_state_name = self.as_ref();
-        let invalid_input = Arc::from(format!("Invalid <code>{name}</code>: <code>{text}</code>\nCurrent state: <code>{current_state_name}</code>"));
+        let invalid_input = Arc::from(format!("Invalid <code>{name}</code>:\n{text}\n\nCurrent state: <code>{current_state_name}</code>"));
         let prompt = Arc::from(format!("Please, enter <code>{name}</code>:"));
-        let repr = Arc::from(self.get_fields().to_string());
+        let repr = Arc::from(self.as_fields().to_string());
 
         StateDescription {
             invalid_input,
             repr,
             prompt,
-        }
-    }
-
-    pub fn get_fields_mut(&mut self) -> &mut StateFields {
-        match self {
-            State::InsideRootMenu(fields) => fields,
-            State::InsideUserMenu(fields) => fields,
-            State::InsideDeckMenu(fields) => fields,
-            State::InsideCardMenu(fields) => fields,
-            State::InsideCardGroupMenu(fields) => fields,
-            State::InsideTagMenu(fields) => fields,
-            State::ReceiveDeckTitle(fields) => fields,
-            State::ReceiveDeckTags(fields) => fields,
-            State::ReceiveDeckDescription(fields) => fields,
-            State::ReceiveDeckParent(fields) => fields,
-            State::ReceiveDeckSettingsDailyLimit(fields) => fields,
-            State::ReceiveDeckConfirm(fields) => fields,
-            State::ReceiveCardTitle(fields) => fields,
-            State::ReceiveCardFront(fields) => fields,
-            State::ReceiveCardBack(fields) => fields,
-            State::ReceiveCardHints(fields) => fields,
-            State::ReceiveCardDifficulty(fields) => fields,
-            State::ReceiveCardImportance(fields) => fields,
-            State::ReceiveCardTags(fields) => fields,
-            State::ReceiveCardConfirm(fields) => fields,
-            State::ReceiveCardDeck(fields) => fields,
-        }
-    }
-
-    pub fn get_fields(&self) -> &StateFields {
-        match self {
-            State::InsideRootMenu(fields) => fields,
-            State::InsideUserMenu(fields) => fields,
-            State::InsideDeckMenu(fields) => fields,
-            State::InsideCardMenu(fields) => fields,
-            State::InsideCardGroupMenu(fields) => fields,
-            State::InsideTagMenu(fields) => fields,
-            State::ReceiveDeckTitle(fields) => fields,
-            State::ReceiveDeckTags(fields) => fields,
-            State::ReceiveDeckDescription(fields) => fields,
-            State::ReceiveDeckParent(fields) => fields,
-            State::ReceiveDeckSettingsDailyLimit(fields) => fields,
-            State::ReceiveDeckConfirm(fields) => fields,
-            State::ReceiveCardTitle(fields) => fields,
-            State::ReceiveCardFront(fields) => fields,
-            State::ReceiveCardBack(fields) => fields,
-            State::ReceiveCardHints(fields) => fields,
-            State::ReceiveCardDifficulty(fields) => fields,
-            State::ReceiveCardImportance(fields) => fields,
-            State::ReceiveCardTags(fields) => fields,
-            State::ReceiveCardConfirm(fields) => fields,
-            State::ReceiveCardDeck(fields) => fields,
-        }
-    }
-
-    pub fn take_fields(self) -> StateFields {
-        match self {
-            State::InsideRootMenu(fields) => fields,
-            State::InsideUserMenu(fields) => fields,
-            State::InsideDeckMenu(fields) => fields,
-            State::InsideCardMenu(fields) => fields,
-            State::InsideCardGroupMenu(fields) => fields,
-            State::InsideTagMenu(fields) => fields,
-            State::ReceiveDeckTitle(fields) => fields,
-            State::ReceiveDeckTags(fields) => fields,
-            State::ReceiveDeckDescription(fields) => fields,
-            State::ReceiveDeckParent(fields) => fields,
-            State::ReceiveDeckSettingsDailyLimit(fields) => fields,
-            State::ReceiveDeckConfirm(fields) => fields,
-            State::ReceiveCardTitle(fields) => fields,
-            State::ReceiveCardFront(fields) => fields,
-            State::ReceiveCardBack(fields) => fields,
-            State::ReceiveCardHints(fields) => fields,
-            State::ReceiveCardDifficulty(fields) => fields,
-            State::ReceiveCardImportance(fields) => fields,
-            State::ReceiveCardTags(fields) => fields,
-            State::ReceiveCardConfirm(fields) => fields,
-            State::ReceiveCardDeck(fields) => fields,
         }
     }
 }
@@ -175,7 +109,7 @@ pub enum StateFields {
     Deck {
         id: Option<Arc<str>>,
         title: Option<Arc<str>>,
-        tags: Vec<Arc<str>>,
+        tags: BTreeSet<Arc<str>>,
         description: Option<Arc<str>>,
         parent: Option<Arc<str>>,
         daily_limit: Option<usize>,
@@ -192,6 +126,11 @@ pub enum StateFields {
         data: Option<Arc<Value>>,
         tags: BTreeSet<Arc<str>>,
         deck: Option<Arc<str>>,
+    },
+
+    GenerateCard {
+        deck: Option<Arc<str>>,
+        prompt: Option<Arc<str>>,
     },
 }
 
@@ -237,6 +176,10 @@ impl Display for StateFields {
                 writeln!(f, "<b>tags:</b> {}", tags.join_or_dash())?;
                 write!(f, "<b>deck:</b> {}", deck.to_string_or_dash())
             }
+            StateFields::GenerateCard { deck, prompt } => {
+                writeln!(f, "<b>Deck:</b> {}", deck.to_string_or_dash())?;
+                write!(f, "<b>Prompt:</b> {}", prompt.to_string_or_dash())
+            }
         }
     }
 }
@@ -261,10 +204,72 @@ impl StateFields {
         Self::Deck {
             id: None,
             title: None,
-            tags: vec![],
+            tags: Default::default(),
             description: None,
             parent: None,
             daily_limit: None,
         }
     }
+}
+
+
+
+
+macro_rules! state_variants {
+    ($($variant:path),*) => {
+        paste! {
+            impl State {
+                pub fn as_fields_mut(&mut self) -> &mut StateFields {
+                    match self {
+                        $(
+                            State::$variant(fields) => fields,
+                        )*
+                    }
+                }
+        
+                pub fn as_fields(&self) -> &StateFields {
+                    match self {
+                        $(
+                            State::$variant(fields) => fields,
+                        )*
+                    }
+                }
+        
+                pub fn into_fields(self) -> StateFields {
+                    match self {
+                        $(
+                            State::$variant(fields) => fields,
+                        )*
+                    }
+                }
+            }
+        }
+    }
+}
+
+state_variants! {
+    InsideRootMenu,
+    InsideUserMenu,
+    InsideDeckMenu,
+    InsideCardMenu,
+    InsideCardGroupMenu,
+    InsideTagMenu,
+    ReceiveDeckTitle,
+    ReceiveDeckTags,
+    ReceiveDeckDescription,
+    ReceiveDeckParent,
+    ReceiveDeckSettingsDailyLimit,
+    ReceiveDeckConfirm,
+    ReceiveCardTitle,
+    ReceiveCardFront,
+    ReceiveCardBack,
+    ReceiveCardHints,
+    ReceiveCardDifficulty,
+    ReceiveCardImportance,
+    ReceiveCardTags,
+    ReceiveCardConfirm,
+    ReceiveCardDeck,
+    ReceiveGenerateCardDeck,
+    ReceiveGenerateCardPrompt,
+    ReceiveGenerateCardConfirm
 }

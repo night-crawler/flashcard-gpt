@@ -144,7 +144,7 @@ pub(super) async fn receive_root_menu_item(
         }
         (Some(State::ReceiveDeckTags(mut fields)), tag) => {
             if let StateFields::Deck { tags, .. } = &mut fields {
-                tags.push(tag.into());
+                tags.insert(tag.into());
             } else {
                 bail!("Invalid state: {:?}", fields);
             }
@@ -182,6 +182,17 @@ pub(super) async fn receive_root_menu_item(
             }
             manager
                 .update_state(State::ReceiveCardConfirm(fields))
+                .await?;
+            manager.send_state_and_prompt().await?;
+        }
+        (Some(State::ReceiveGenerateCardDeck(mut fields)), next_deck) => {
+            if let StateFields::GenerateCard { deck, .. } = &mut fields {
+                deck.replace(next_deck.into());
+            } else {
+                bail!("Invalid state: {:?}", fields);
+            }
+            manager
+                .update_state(State::ReceiveGenerateCardPrompt(fields))
                 .await?;
             manager.send_state_and_prompt().await?;
         }

@@ -29,6 +29,14 @@ itertools = { workspace = true }
 llm-chain = { workspace = true }
 llm-chain-openai = { workspace = true }
 
+delegate = "0.13"
+delegate-attr = "0.3"
+#enum-extract-macro = "0.1"
+#enum-extract-error = "0.1"
+#enum-fields = "0.1"
+
+serde_json = { workspace = true }
+
 [dependencies.uuid]
 version = "1.10.0"
 features = [

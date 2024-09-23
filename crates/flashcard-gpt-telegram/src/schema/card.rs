@@ -7,21 +7,30 @@ use anyhow::anyhow;
 use std::collections::BTreeSet;
 
 use crate::ext::StrExt;
+use crate::schema::root::cancel;
 use flashcard_gpt_core::dto::card::CreateCardDto;
 use flashcard_gpt_core::dto::deck_card::CreateDeckCardDto;
+use flashcard_gpt_core::dto::llm::GptCardGroup;
+use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
 use std::sync::Arc;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Update};
+use tracing::{error, info};
 
 pub fn card_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let card_command_handler = teloxide::filter_command::<CardCommand, _>().branch(
         case![State::InsideCardMenu(fields)]
-            .branch(case![CardCommand::Create].endpoint(handle_create_card)),
+            .branch(case![CardCommand::Create].endpoint(handle_create_card))
+            .branch(case![CardCommand::Generate].endpoint(handle_generate_cards)),
     );
 
     let card_message_handler = Update::filter_message()
         .branch(card_command_handler)
+        .branch(
+            teloxide::filter_command::<CardCommand, _>()
+                .branch(case![CardCommand::Cancel].endpoint(cancel)),
+        )
         .branch(case![State::ReceiveCardTitle(fields)].endpoint(receive_card_title))
         .branch(case![State::ReceiveCardFront(fields)].endpoint(receive_card_front))
         .branch(case![State::ReceiveCardBack(fields)].endpoint(receive_card_back))
@@ -48,6 +57,13 @@ pub fn card_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
             case![State::ReceiveCardConfirm(fields)].branch(
                 teloxide::filter_command::<CardCommand, _>()
                     .branch(case![CardCommand::Next].endpoint(create_card)),
+            ),
+        )
+        .branch(case![State::ReceiveGenerateCardPrompt(fields)].endpoint(receive_generator_prompt))
+        .branch(
+            case![State::ReceiveGenerateCardConfirm(fields)].branch(
+                teloxide::filter_command::<CardCommand, _>()
+                    .branch(case![CardCommand::Next].endpoint(generate_cards)),
             ),
         );
 
@@ -212,7 +228,7 @@ async fn create_card(manager: ChatManager) -> anyhow::Result<()> {
         data,
         tags,
         deck,
-    } = manager.get_state().await?.take_fields()
+    } = manager.get_state().await?.into_fields()
     else {
         manager.send_invalid_input().await?;
         return Ok(());
@@ -266,5 +282,67 @@ async fn create_card(manager: ChatManager) -> anyhow::Result<()> {
     }
 
     manager.dialogue.exit().await?;
+    Ok(())
+}
+
+async fn handle_generate_cards(manager: ChatManager) -> anyhow::Result<()> {
+    manager
+        .update_state(State::ReceiveGenerateCardDeck(StateFields::GenerateCard {
+            deck: None,
+            prompt: None,
+        }))
+        .await?;
+    manager.send_deck_menu().await?;
+    Ok(())
+}
+
+async fn receive_generator_prompt(manager: ChatManager) -> anyhow::Result<()> {
+    let Some(text) = manager.parse_html() else {
+        manager.send_invalid_input().await?;
+        error!("Prompt was not provided.");
+        return Ok(());
+    };
+    info!(%text, "Received a prompt for card generation");
+
+    let fields = patch_state!(
+        manager,
+        StateFields::GenerateCard { prompt },
+        |prompt: &mut Option<Arc<str>>| { prompt.replace(text) }
+    );
+
+    manager
+        .update_state(State::ReceiveGenerateCardConfirm(fields))
+        .await?;
+    manager.send_state_and_prompt().await?;
+
+    Ok(())
+}
+
+async fn generate_cards(
+    manager: ChatManager,
+    generator: CardGeneratorService,
+) -> anyhow::Result<()> {
+    let StateFields::GenerateCard {
+        deck: Some(deck),
+        prompt: Some(prompt),
+    } = manager.get_state().await?.into_fields()
+    else {
+        manager.send_invalid_input().await?;
+        return Ok(());
+    };
+
+    let user = manager.binding.user.clone();
+
+    let code_cards = generator.generate_code_cards(prompt.as_ref()).await?;
+    let gpt_card_group = GptCardGroup::from_gpt_response(&code_cards)?;
+
+    let cards = generator
+        .create_cards(user.as_ref(), deck.as_thing()?, gpt_card_group)
+        .await?;
+    let data = serde_json::to_string_pretty(&cards)?;
+    let data = teloxide::utils::html::code_block_with_lang(&data, "json");
+
+    manager.send_message(data).await?;
+
     Ok(())
 }

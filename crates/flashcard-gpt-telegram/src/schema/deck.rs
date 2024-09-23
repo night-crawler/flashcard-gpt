@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use crate::chat_manager::ChatManager;
 use crate::command::DeckCommand;
 use crate::db::repositories::Repositories;
@@ -100,7 +101,7 @@ async fn receive_deck_tags(manager: ChatManager) -> anyhow::Result<()> {
         return Ok(());
     };
 
-    let fields = patch_state!(manager, StateFields::Deck { tags }, |tags: &mut Vec<
+    let fields = patch_state!(manager, StateFields::Deck { tags }, |tags: &mut BTreeSet<
         Arc<str>,
     >| {
         tags.extend(new_tags)
@@ -165,7 +166,7 @@ async fn create_deck(
         description,
         parent,
         daily_limit,
-    } = manager.get_state().await?.take_fields()
+    } = manager.get_state().await?.into_fields()
     else {
         manager.send_invalid_input().await?;
         return Ok(());

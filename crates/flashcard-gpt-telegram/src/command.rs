@@ -58,6 +58,9 @@ pub enum UserCommand {
 
     /// Edit password
     EditPassword,
+
+    /// Cancel the current operation
+    Cancel,
 }
 
 #[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]
@@ -68,9 +71,15 @@ pub enum CardCommand {
 
     /// Create a new card
     Create,
+    
+    /// Generate cards using ChatGPT and add them to the deck
+    Generate,
 
     /// Continue to the next state
     Next,
+
+    /// Cancel the current operation
+    Cancel,
 }
 
 #[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]

@@ -11,6 +11,7 @@ use crate::repo::deck::DeckRepo;
 use crate::repo::tag::TagRepo;
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct CardGeneratorService {
     pub card_generator: CardGenerator,
     pub cards: CardRepo,
