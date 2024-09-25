@@ -40,3 +40,5 @@ anyhow = "1"
 
 llm-chain = "0.13"
 llm-chain-openai = "0.13"
+
+markdown = "1.0.0-alpha.20"

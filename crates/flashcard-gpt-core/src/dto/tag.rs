@@ -13,6 +13,12 @@ pub struct TagDto {
     pub time: Time,
 }
 
+impl AsRef<TagDto> for TagDto {
+    fn as_ref(&self) -> &TagDto {
+        self
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Builder)]
 pub struct CreateTagDto {
     pub name: Arc<str>,

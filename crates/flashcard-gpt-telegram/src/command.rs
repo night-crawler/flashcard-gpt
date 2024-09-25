@@ -71,7 +71,7 @@ pub enum CardCommand {
 
     /// Create a new card
     Create,
-    
+
     /// Generate cards using ChatGPT and add them to the deck
     Generate,
 

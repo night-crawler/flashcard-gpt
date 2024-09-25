@@ -12,6 +12,7 @@ use flashcard_gpt_core::dto::card::CreateCardDto;
 use flashcard_gpt_core::dto::deck_card::CreateDeckCardDto;
 use flashcard_gpt_core::dto::llm::GptCardGroup;
 use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
+use serde_json::Value;
 use std::sync::Arc;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
@@ -333,16 +334,40 @@ async fn generate_cards(
 
     let user = manager.binding.user.clone();
 
-    let code_cards = generator.generate_code_cards(prompt.as_ref()).await?;
-    let gpt_card_group = GptCardGroup::from_gpt_response(&code_cards)?;
+    let (code_cards, params) = generator.generate_code_cards(prompt.as_ref()).await?;
+    let mut gpt_card_group = GptCardGroup::from_gpt_response(&code_cards)?;
 
-    let cards = generator
+    if let Some(data) = gpt_card_group.data.as_mut()
+        && let Value::Object(map) = data
+    {
+        map.insert("prompt".into(), Value::String(prompt.to_string()));
+        if let Some(article) = params.get("article") {
+            map.insert("article".into(), Value::String(article.to_string()));
+        }
+        if let Some(commented_code) = params.get("commented_code") {
+            map.insert(
+                "commented_code".into(),
+                Value::String(commented_code.to_string()),
+            );
+        }
+    }
+
+    let deck_card_group = generator
         .create_cards(user.as_ref(), deck.as_thing()?, gpt_card_group)
         .await?;
-    let data = serde_json::to_string_pretty(&cards)?;
-    let data = teloxide::utils::html::code_block_with_lang(&data, "json");
 
-    manager.send_message(data).await?;
+    manager
+        .send_card_group(deck_card_group.card_group.as_ref())
+        .await?;
+    for card in deck_card_group.card_group.cards.iter() {
+        manager.send_card(card.as_ref()).await?;
+    }
+
+    // let cg = manager.repositories.card_groups.get_by_id("card_group:nqxszv5nd2mvl6olb5fi".as_thing()?).await?;
+    // manager.send_card_group(&cg).await?;
+    // for card in cg.cards {
+    //     manager.send_card(card.as_ref()).await?;
+    // }
 
     Ok(())
 }

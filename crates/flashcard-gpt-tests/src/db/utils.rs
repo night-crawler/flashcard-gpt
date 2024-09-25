@@ -20,13 +20,13 @@ pub async fn create_user_repo() -> TestResult<UserRepo> {
     Ok(UserRepo::new_user(
         db,
         span!(Level::INFO, "user_repo"),
-        true,
+        false,
     ))
 }
 
 pub async fn create_tag_repo() -> TestResult<TagRepo> {
     let db = TEST_DB.get_client().await?;
-    Ok(TagRepo::new_tag(db, span!(Level::INFO, "tag_repo"), true))
+    Ok(TagRepo::new_tag(db, span!(Level::INFO, "tag_repo"), false))
 }
 
 pub async fn create_deck_repo() -> TestResult<DeckRepo> {
@@ -34,7 +34,7 @@ pub async fn create_deck_repo() -> TestResult<DeckRepo> {
     Ok(DeckRepo::new_deck(
         db,
         span!(Level::INFO, "deck_repo"),
-        true,
+        false,
     ))
 }
 
@@ -43,7 +43,7 @@ pub async fn create_card_repo() -> TestResult<CardRepo> {
     Ok(CardRepo::new_card(
         db,
         span!(Level::INFO, "card_repo"),
-        true,
+        false,
     ))
 }
 
@@ -52,7 +52,7 @@ pub async fn create_card_group_repo() -> TestResult<CardGroupRepo> {
     Ok(CardGroupRepo::new_card_group(
         db,
         span!(Level::INFO, "card_group_repo"),
-        true,
+        false,
     ))
 }
 

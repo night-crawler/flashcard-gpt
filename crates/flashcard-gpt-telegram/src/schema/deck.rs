@@ -1,4 +1,3 @@
-use std::collections::BTreeSet;
 use crate::chat_manager::ChatManager;
 use crate::command::DeckCommand;
 use crate::db::repositories::Repositories;
@@ -9,6 +8,7 @@ use crate::state::{State, StateFields};
 use crate::{patch_state, FlashGptDialogue};
 use anyhow::anyhow;
 use flashcard_gpt_core::dto::deck::{CreateDeckDto, DeckSettings};
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
@@ -101,11 +101,11 @@ async fn receive_deck_tags(manager: ChatManager) -> anyhow::Result<()> {
         return Ok(());
     };
 
-    let fields = patch_state!(manager, StateFields::Deck { tags }, |tags: &mut BTreeSet<
-        Arc<str>,
-    >| {
-        tags.extend(new_tags)
-    });
+    let fields = patch_state!(
+        manager,
+        StateFields::Deck { tags },
+        |tags: &mut BTreeSet<Arc<str>>| { tags.extend(new_tags) }
+    );
     manager.update_state(State::ReceiveDeckTags(fields)).await?;
     manager.send_tag_menu().await?;
     Ok(())

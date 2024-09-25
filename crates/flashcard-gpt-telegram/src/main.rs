@@ -15,22 +15,44 @@ pub mod message_render;
 pub mod schema;
 pub mod state;
 
-use llm_chain::options::{ModelRef, Opt, Options};
-use llm_chain::traits::Executor as _;
-use llm_chain_openai::chatgpt::Executor;
 use crate::db::repositories::Repositories;
+use crate::ext::markdown::MarkdownFormatter;
 use crate::schema::schema;
 use crate::state::{FlashGptDialogue, State};
+use flashcard_gpt_core::llm::card_generator::CardGenerator;
+use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
 use flashcard_gpt_core::logging::init_tracing;
 use flashcard_gpt_core::reexports::db::engine::remote::ws::{Client, Ws};
 use flashcard_gpt_core::reexports::db::opt::auth::Root;
 use flashcard_gpt_core::reexports::db::Surreal;
+use llm_chain::options::{ModelRef, Opt, Options};
+use llm_chain::traits::Executor as _;
+use llm_chain_openai::chatgpt::Executor;
+use markdown::{Constructs, ParseOptions};
 use teloxide::adaptors::DefaultParseMode;
 use teloxide::types::ParseMode;
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
 use tracing::{info, span, Level};
-use flashcard_gpt_core::llm::card_generator::CardGenerator;
-use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
+
+fn init_card_generator_service(
+    repositories: &Repositories,
+) -> anyhow::Result<CardGeneratorService> {
+    let openai_api_key = std::env::var("OPENAI_API_KEY")?;
+    let mut options = Options::builder();
+    options.add_option(Opt::ApiKey(openai_api_key));
+    options.add_option(Opt::Model(ModelRef::from_model_name("chatgpt-4o-latest")));
+    let options = options.build();
+    let exec = Executor::new_with_options(options)?;
+    let card_generator = CardGenerator::new(exec);
+
+    Ok(CardGeneratorService::new(
+        card_generator,
+        repositories.cards.clone(),
+        repositories.card_groups.clone(),
+        repositories.decks.clone(),
+        repositories.tags.clone(),
+    ))
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -48,21 +70,15 @@ async fn main() -> anyhow::Result<()> {
     db.use_ns("flashcards_gpt").use_db("flashcards").await?;
 
     let repositories = Repositories::new(db.clone(), span!(Level::INFO, "root"));
-
-    let openai_api_key = std::env::var("OPENAI_API_KEY")?;
-    let mut options = Options::builder();
-    options.add_option(Opt::ApiKey(openai_api_key));
-    options.add_option(Opt::Model(ModelRef::from_model_name("chatgpt-4o-latest")));
-    let options = options.build();
-    let exec = Executor::new_with_options(options)?;
-    let card_generator = CardGenerator::new(exec);
-    let card_generation_service = CardGeneratorService::new(
-        card_generator,
-        repositories.cards.clone(),
-        repositories.card_groups.clone(),
-        repositories.decks.clone(),
-        repositories.tags.clone(),
-    );
+    let card_generation_service = init_card_generator_service(&repositories)?;
+    let formatter = MarkdownFormatter::new(ParseOptions {
+        constructs: Constructs {
+            math_flow: true,
+            math_text: true,
+            ..Constructs::gfm()
+        },
+        ..ParseOptions::gfm()
+    });
 
     let span = span!(Level::INFO, "root");
 
@@ -73,7 +89,8 @@ async fn main() -> anyhow::Result<()> {
             InMemStorage::<State>::new(),
             repositories,
             span,
-            card_generation_service
+            card_generation_service,
+            formatter
         ])
         .enable_ctrlc_handler()
         .build()

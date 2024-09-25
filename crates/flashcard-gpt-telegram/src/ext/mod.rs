@@ -4,7 +4,10 @@ use itertools::Itertools;
 
 pub mod binding;
 pub mod bot;
+pub mod card;
 pub mod dialogue;
+pub mod json_value;
+pub mod markdown;
 pub mod menu_repr;
 pub mod message;
 pub mod rendering;

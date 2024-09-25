@@ -8,7 +8,7 @@ pub struct GptCardGroup {
     pub difficulty: u8,
     pub title: Arc<str>,
     pub tags: Vec<Arc<str>>,
-    pub data: Option<Arc<Value>>,
+    pub data: Option<Value>,
     pub cards: Vec<GptCard>,
 }
 

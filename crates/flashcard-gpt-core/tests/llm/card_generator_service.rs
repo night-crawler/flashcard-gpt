@@ -54,11 +54,11 @@ async fn test_create_cards() -> TestResult {
         .await?;
 
     let gpt_card_group = GptCardGroup {
-        importance: 12,
+        importance: 10,
         difficulty: 2,
         title: Arc::from("title"),
         tags: vec![Arc::from("tag1"), Arc::from("tag2"), Arc::from("tag3")],
-        data: Some(Arc::new(json!({"leetcode_link": "https://leetcode.com"}))),
+        data: Some(json!({"leetcode_link": "https://leetcode.com"})),
         cards: vec![
             GptCard {
                 title: Arc::from("title1"),

@@ -1,10 +1,16 @@
 use crate::command::CommandExt;
 use crate::db::repositories::Repositories;
+use crate::ext::card::ExtractValueExt;
+use crate::ext::markdown::MarkdownFormatter;
 use crate::ext::menu_repr::IteratorMenuReprExt;
 use crate::message_render::RenderMessageTextHelper;
 use crate::state::FlashGptDialogue;
 use crate::state::{State, StateDescription};
 use flashcard_gpt_core::dto::binding::BindingDto;
+use flashcard_gpt_core::dto::card::CardDto;
+use flashcard_gpt_core::dto::card_group::CardGroupDto;
+use flashcard_gpt_core::dto::tag::TagDto;
+use itertools::Itertools;
 use std::fmt::Debug;
 use std::str::pattern::Pattern;
 use std::str::FromStr;
@@ -16,9 +22,14 @@ use teloxide::utils::command::BotCommands;
 use teloxide::{Bot, RequestError};
 use tracing::{warn, Span};
 
+static DIGITS: [&str; 11] = [
+    "0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟",
+];
+
 #[derive(Debug, Clone)]
 pub struct ChatManager {
     pub repositories: Repositories,
+    pub formatter: MarkdownFormatter,
     pub binding: Arc<BindingDto>,
     pub bot: DefaultParseMode<Bot>,
     pub dialogue: FlashGptDialogue,
@@ -130,7 +141,7 @@ impl ChatManager {
     pub fn parse_html(&self) -> Option<Arc<str>> {
         self.message.as_deref()?.html_text().map(Arc::from)
     }
-    
+
     pub fn parse_text(&self) -> Option<Arc<str>> {
         self.message.as_deref()?.text().map(Arc::from)
     }
@@ -204,5 +215,93 @@ impl ChatManager {
             .await?
             .get_state_description(self.message.as_deref());
         Ok(desc)
+    }
+
+    fn serialize_tags(
+        &self,
+        tags: impl IntoIterator<Item = impl AsRef<TagDto>>,
+    ) -> anyhow::Result<String> {
+        let tags = tags
+            .into_iter()
+            .map(|tag| self.formatter.to_html(&tag.as_ref().slug.replace("-", "_")))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .map(|tag| format!("#{tag}"))
+            .join(" ");
+        Ok(tags)
+    }
+
+    pub async fn send_card_group(&self, cg: &CardGroupDto) -> anyhow::Result<()> {
+        let title = format!("<b>{}</b>", self.formatter.to_html(cg.title.as_ref())?);
+        let title = if let Some(link) = cg.extract_str("leetcode_link") {
+            format!(r#"<a href="{}">{title}</a>"#, link)
+        } else {
+            title
+        };
+
+        let tags = self.serialize_tags(&cg.tags)?;
+
+        let stats = format!(
+            "Difficulty: {} Importance: {}",
+            DIGITS[cg.difficulty as usize % 11],
+            DIGITS[cg.importance as usize % 11],
+        );
+
+        let message = format!("[front] {title}\n\n{stats}\n\n{tags}");
+        self.send_message(message).await?;
+
+        Ok(())
+    }
+
+    pub async fn send_card(&self, card: &CardDto) -> anyhow::Result<()> {
+        let title = format!("<b>{}</b>", self.formatter.to_html(card.title.as_ref())?);
+        let title = if let Some(link) = card.extract_str("leetcode_link") {
+            format!(r#"<a href="{}">{title}</a>"#, link)
+        } else {
+            title
+        };
+
+        let front = if let Some(front) = card.front.as_ref() {
+            self.formatter.to_html(front.as_ref())?
+        } else {
+            String::new()
+        };
+        let back = if let Some(back) = card.back.as_ref() {
+            self.formatter.to_html(back.as_ref())?
+        } else {
+            String::new()
+        };
+        let hints = card
+            .hints
+            .iter()
+            .map(|hint| self.formatter.to_html(hint.as_ref()))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let tags = self.serialize_tags(&card.tags)?;
+
+        let stats = format!(
+            "Difficulty: {} Importance: {}",
+            DIGITS[card.difficulty as usize % 11],
+            DIGITS[card.importance as usize % 11],
+        );
+
+        let front_message = format!("[front] {title}\n\n{stats}\n\n{front}\n\n{tags}");
+        let hint_messages = hints
+            .iter()
+            .enumerate()
+            .map(|(i, hint)| {
+                format!(
+                    "<blockquote expandable>Expand hint {}\n\n\n{hint}</blockquote>",
+                    i + 1
+                )
+            })
+            .join("\n");
+        let back = format!("<tg-spoiler>{back}</tg-spoiler>");
+
+        self.send_message(front_message).await?;
+        self.send_message(hint_messages).await?;
+        self.send_message(back).await?;
+
+        Ok(())
     }
 }

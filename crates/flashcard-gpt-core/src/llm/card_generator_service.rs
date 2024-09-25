@@ -9,6 +9,7 @@ use crate::repo::card::CardRepo;
 use crate::repo::card_group::CardGroupRepo;
 use crate::repo::deck::DeckRepo;
 use crate::repo::tag::TagRepo;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -36,7 +37,10 @@ impl CardGeneratorService {
             tags,
         }
     }
-    pub async fn generate_code_cards(&self, code: impl AsRef<str>) -> Result<String, CoreError> {
+    pub async fn generate_code_cards(
+        &self,
+        code: impl AsRef<str>,
+    ) -> Result<(String, BTreeMap<Arc<str>, Arc<str>>), CoreError> {
         let code_comment_step = CustomStep {
             name: "Code Comment".into(),
             system_template: r#"
@@ -155,16 +159,24 @@ You respond in this JSON format ONLY:
             cards.push(card);
         }
 
+        let tags = self
+            .tags
+            .get_or_create_tags(user.clone(), gpt_card_group.tags)
+            .await?
+            .into_iter()
+            .map(|t| t.id)
+            .collect();
+
         let card_group = self
             .card_groups
             .create(CreateCardGroupDto {
                 user: user.clone(),
-                importance: 0,
+                importance: gpt_card_group.importance,
                 title: gpt_card_group.title,
-                data: None,
+                data: gpt_card_group.data.map(Arc::new),
                 cards: cards.into_iter().map(|c| c.id).collect(),
-                difficulty: 0,
-                tags: vec![],
+                difficulty: gpt_card_group.difficulty,
+                tags,
             })
             .await?;
 

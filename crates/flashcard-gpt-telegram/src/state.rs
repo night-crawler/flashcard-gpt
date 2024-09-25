@@ -1,6 +1,7 @@
-use paste::paste;
 use crate::ext::rendering::{DisplayJoinOrDash, OptionDisplayExt};
+use crate::message_render::RenderMessageTextHelper;
 use flashcard_gpt_core::reexports::json::Value;
+use paste::paste;
 use std::collections::BTreeSet;
 use std::fmt;
 use std::fmt::Display;
@@ -10,7 +11,6 @@ use strum_macros::{AsRefStr, EnumProperty};
 use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::prelude::Dialogue;
 use teloxide::types::Message;
-use crate::message_render::RenderMessageTextHelper;
 
 pub type FlashGptDialogue = Dialogue<State, InMemStorage<State>>;
 
@@ -84,9 +84,7 @@ pub struct StateDescription {
     pub prompt: Arc<str>,
 }
 
-
 impl State {
-
     pub fn get_state_description(&self, msg: Option<&Message>) -> StateDescription {
         let text = msg.and_then(|msg| msg.html_text()).unwrap_or_default();
         let name = self.get_str("name").unwrap_or(self.as_ref());
@@ -212,9 +210,6 @@ impl StateFields {
     }
 }
 
-
-
-
 macro_rules! state_variants {
     ($($variant:path),*) => {
         paste! {
@@ -226,7 +221,7 @@ macro_rules! state_variants {
                         )*
                     }
                 }
-        
+
                 pub fn as_fields(&self) -> &StateFields {
                     match self {
                         $(
@@ -234,7 +229,7 @@ macro_rules! state_variants {
                         )*
                     }
                 }
-        
+
                 pub fn into_fields(self) -> StateFields {
                     match self {
                         $(

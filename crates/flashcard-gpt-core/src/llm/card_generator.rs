@@ -1,9 +1,11 @@
 use crate::error::CoreError;
+use itertools::Itertools;
 use llm_chain::frame::Frame;
 use llm_chain::step::Step;
 use llm_chain::{prompt, Parameters};
 use llm_chain_openai::chatgpt::Executor;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tracing::info;
 
@@ -36,7 +38,7 @@ impl CardGenerator {
         &self,
         custom_steps: &[CustomStep],
         text: impl Into<String>,
-    ) -> Result<String, CoreError> {
+    ) -> Result<(String, BTreeMap<Arc<str>, Arc<str>>), CoreError> {
         let mut parameters = Parameters::new();
 
         let Some(first_step) = custom_steps.first() else {
@@ -94,6 +96,22 @@ impl CardGenerator {
             ));
         };
 
-        Ok(result)
+        let return_params = custom_steps
+            .iter()
+            .flat_map(|step| {
+                step.input_param_names
+                    .iter()
+                    .chain(std::iter::once(&step.output_param_name))
+                    .cloned()
+            })
+            .unique()
+            .map(|name| {
+                let key = name.clone();
+                let value = Arc::from(parameters.get(name.as_ref()).unwrap());
+                (key, value)
+            })
+            .collect::<BTreeMap<Arc<str>, Arc<str>>>();
+
+        Ok((result, return_params))
     }
 }

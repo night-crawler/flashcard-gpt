@@ -1,6 +1,7 @@
 use crate::chat_manager::ChatManager;
 use crate::db::repositories::Repositories;
 use crate::ext::binding::BindingEntity;
+use crate::ext::markdown::MarkdownFormatter;
 use crate::schema::card::card_schema;
 use crate::schema::deck::deck_schema;
 use crate::schema::root::{receive_inline_query, receive_root_menu_item, root_schema};
@@ -45,6 +46,7 @@ fn init_chat_manager(
     binding: Arc<BindingDto>,
     bot: DefaultParseMode<Bot>,
     dialogue: FlashGptDialogue,
+    markdown_formatter: MarkdownFormatter,
     span: Span,
 ) -> ChatManager {
     let message = match update.kind {
@@ -59,6 +61,7 @@ fn init_chat_manager(
         dialogue,
         message,
         span,
+        formatter: markdown_formatter,
     }
 }
 

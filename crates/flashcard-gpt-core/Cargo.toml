@@ -30,7 +30,7 @@ llm-chain-openai = { workspace = true }
 slug = { workspace = true }
 itertools = { workspace = true }
 
-markdown = "1.0.0-alpha.20"
+markdown = { workspace = true }
 
 [dev-dependencies]
 flashcard-gpt-tests = { path = "../flashcard-gpt-tests" }
