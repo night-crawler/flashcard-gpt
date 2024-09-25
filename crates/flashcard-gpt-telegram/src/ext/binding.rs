@@ -2,6 +2,7 @@ use flashcard_gpt_core::dto::binding::{BindingDto, GetOrCreateBindingDto};
 use flashcard_gpt_core::error::CoreError;
 use flashcard_gpt_core::repo::binding::BindingRepo;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::fmt::Display;
 use std::future::Future;
 use std::sync::Arc;
@@ -43,7 +44,7 @@ impl BindingExt for BindingRepo {
 
 #[derive(Debug, Clone)]
 pub enum BindingEntity<'a> {
-    User(&'a User),
+    User(&'a User, &'a Chat),
     Chat(&'a Chat),
 }
 
@@ -54,7 +55,7 @@ impl<'a> BindingEntity<'a> {
 
     pub fn name(&self) -> Arc<str> {
         match self {
-            BindingEntity::User(user) => user.full_name().into(),
+            BindingEntity::User(user, _) => user.full_name().into(),
             BindingEntity::Chat(chat) => chat
                 .title()
                 .or_else(|| chat.username())
@@ -66,18 +67,19 @@ impl<'a> BindingEntity<'a> {
 
     pub fn data(&self) -> flashcard_gpt_core::reexports::json::Value {
         match self {
-            BindingEntity::User(user) => {
-                flashcard_gpt_core::reexports::json::to_value(user).unwrap()
-            }
-            BindingEntity::Chat(chat) => {
-                flashcard_gpt_core::reexports::json::to_value(chat).unwrap()
-            }
+            BindingEntity::User(user, chat) => json!({
+                "user": user,
+                "chat": chat,
+            }),
+            BindingEntity::Chat(chat) => json!({
+                "chat": chat,
+            }),
         }
     }
 
     pub fn email(&self) -> Arc<str> {
         match self {
-            BindingEntity::User(user) => {
+            BindingEntity::User(user, _) => {
                 let username = user.username.clone().unwrap_or_else(|| user.id.to_string());
                 format!("user-{username}@telegram-flash-gpt.example.com")
             }
@@ -95,41 +97,23 @@ where
 {
     fn from(value: &'b Message) -> Self {
         if let Some(user) = &value.from {
-            BindingEntity::User(user)
+            BindingEntity::User(user, &value.chat)
         } else {
             BindingEntity::Chat(&value.chat)
         }
     }
 }
 
-impl<'a, 'b> From<&'b User> for BindingEntity<'a>
-where
-    'b: 'a,
-{
-    fn from(value: &'b User) -> Self {
-        BindingEntity::User(value)
-    }
-}
-
-impl<'a, 'b> From<&'b Chat> for BindingEntity<'a>
-where
-    'b: 'a,
-{
-    fn from(value: &'b Chat) -> Self {
-        BindingEntity::Chat(value)
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub enum BindingIdentity {
-    User(UserId),
+    User(UserId, ChatId),
     Chat(ChatId),
 }
 
 impl From<&Message> for BindingIdentity {
     fn from(value: &Message) -> Self {
         if let Some(user) = &value.from {
-            BindingIdentity::User(user.id)
+            BindingIdentity::User(user.id, value.chat.id)
         } else {
             BindingIdentity::Chat(value.chat.id)
         }
@@ -139,7 +123,7 @@ impl From<&Message> for BindingIdentity {
 impl Display for BindingIdentity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            BindingIdentity::User(id) => write!(f, "user:{}", id),
+            BindingIdentity::User(id, chat_id) => write!(f, "user:{id}:{chat_id}"),
             BindingIdentity::Chat(id) => write!(f, "chat:{}", id),
         }
     }
@@ -148,7 +132,7 @@ impl Display for BindingIdentity {
 impl<'a> From<&BindingEntity<'a>> for BindingIdentity {
     fn from(value: &BindingEntity) -> Self {
         match value {
-            BindingEntity::User(user) => BindingIdentity::User(user.id),
+            BindingEntity::User(user, chat) => BindingIdentity::User(user.id, chat.id),
             BindingEntity::Chat(chat) => BindingIdentity::Chat(chat.id),
         }
     }
@@ -161,8 +145,10 @@ where
     type Error = anyhow::Error;
 
     fn try_from(value: &'b Update) -> Result<Self, Self::Error> {
-        if let Some(user) = value.from() {
-            Ok(BindingEntity::User(user))
+        if let Some(user) = value.from()
+            && let Some(chat) = value.chat()
+        {
+            Ok(BindingEntity::User(user, chat))
         } else if let Some(chat) = value.chat() {
             Ok(BindingEntity::Chat(chat))
         } else {

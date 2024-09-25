@@ -368,6 +368,7 @@ async fn generate_cards(
     // for card in cg.cards {
     //     manager.send_card(card.as_ref()).await?;
     // }
+    
 
     Ok(())
 }
