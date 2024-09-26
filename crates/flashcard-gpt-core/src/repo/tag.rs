@@ -13,7 +13,7 @@ pub type TagRepo = GenericRepo<CreateTagDto, TagDto, ()>;
 
 impl TagRepo {
     pub fn new_tag(db: Surreal<Client>, span: Span, enable_transactions: bool) -> Self {
-        Self::new(db, span, "tag", "", enable_transactions)
+        Self::new(db, span, "tag", "", "", enable_transactions)
     }
 
     pub async fn get_or_create_tags(

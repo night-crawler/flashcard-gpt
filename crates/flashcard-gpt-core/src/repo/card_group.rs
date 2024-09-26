@@ -12,6 +12,7 @@ impl CardGroupRepo {
             db,
             span,
             "card_group",
+            "",
             "user, tags, cards, cards.user, cards.tags",
             enable_transactions,
         )

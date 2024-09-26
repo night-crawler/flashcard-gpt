@@ -10,51 +10,37 @@ use flashcard_gpt_core::repo::card_group::CardGroupRepo;
 use flashcard_gpt_core::repo::deck::DeckRepo;
 use flashcard_gpt_core::repo::tag::TagRepo;
 use flashcard_gpt_core::repo::user::UserRepo;
+use flashcard_gpt_core::repo::global_settings::GlobalSettingsRepo;
+use flashcard_gpt_core::repo::history::HistoryRepo;
 use std::sync::Arc;
 use surrealdb::sql::Thing;
 use testresult::TestResult;
 use tracing::{span, Level};
+use paste::paste;
 
-pub async fn create_user_repo() -> TestResult<UserRepo> {
-    let db = TEST_DB.get_client().await?;
-    Ok(UserRepo::new_user(
-        db,
-        span!(Level::INFO, "user_repo"),
-        false,
-    ))
+macro_rules! create_repo_fn {
+    ($name:ident) => {
+        paste! {
+            pub async fn [<create_ $name _repo>]() -> TestResult<[< $name:camel Repo>]> {
+                let db = TEST_DB.get_client().await?;
+                Ok([< $name:camel Repo>]::[< new_ $name >](
+                    db,
+                    span!(Level::INFO, concat!(stringify!($name), "_repo")),
+                    false,
+                ))
+            }
+        }
+    }
 }
 
-pub async fn create_tag_repo() -> TestResult<TagRepo> {
-    let db = TEST_DB.get_client().await?;
-    Ok(TagRepo::new_tag(db, span!(Level::INFO, "tag_repo"), false))
-}
+create_repo_fn!(user);
+create_repo_fn!(tag);
+create_repo_fn!(deck);
+create_repo_fn!(card);
+create_repo_fn!(card_group);
+create_repo_fn!(global_settings);
+create_repo_fn!(history);
 
-pub async fn create_deck_repo() -> TestResult<DeckRepo> {
-    let db = TEST_DB.get_client().await?;
-    Ok(DeckRepo::new_deck(
-        db,
-        span!(Level::INFO, "deck_repo"),
-        false,
-    ))
-}
-
-pub async fn create_card_repo() -> TestResult<CardRepo> {
-    let db = TEST_DB.get_client().await?;
-    Ok(CardRepo::new_card(
-        db,
-        span!(Level::INFO, "card_repo"),
-        false,
-    ))
-}
-
-pub async fn create_card_group_repo() -> TestResult<CardGroupRepo> {
-    let db = TEST_DB.get_client().await?;
-    Ok(CardGroupRepo::new_card_group(
-        db,
-        span!(Level::INFO, "card_group_repo"),
-        false,
-    ))
-}
 
 pub async fn create_user(name: &str) -> TestResult<User> {
     let repo = create_user_repo().await?;

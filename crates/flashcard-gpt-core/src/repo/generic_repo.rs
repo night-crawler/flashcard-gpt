@@ -12,6 +12,7 @@ pub struct GenericRepo<Create, Read, Update> {
     pub(super) db: Surreal<Client>,
     pub(super) span: Span,
     pub(super) table_name: &'static str,
+    pub(super) additional_query: &'static str,
     pub(super) enable_transactions: bool,
     pub(super) fetch: &'static str,
 
@@ -26,6 +27,7 @@ impl<Create, Read, Update> Clone for GenericRepo<Create, Read, Update> {
             db: self.db.clone(),
             span: self.span.clone(),
             table_name: self.table_name,
+            additional_query: self.additional_query,
             enable_transactions: self.enable_transactions,
             fetch: self.fetch,
             _create_phantom: std::marker::PhantomData,
@@ -45,6 +47,7 @@ where
         db: Surreal<Client>,
         span: Span,
         table_name: &'static str,
+        additional_query: &'static str,
         fetch: &'static str,
         enable_transactions: bool,
     ) -> Self {
@@ -52,6 +55,7 @@ where
             db,
             span,
             table_name,
+            additional_query,
             enable_transactions,
             fetch,
             _create_phantom: std::marker::PhantomData,
@@ -76,8 +80,20 @@ where
 
     #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?id))]
     pub async fn get_by_id(&self, id: impl Into<Thing> + Debug) -> Result<Read, CoreError> {
+        let fetch = if self.fetch.is_empty() {
+            String::new()
+        } else {
+            format!("fetch {}", self.fetch)
+        };
+        let query = format!(
+            r#"
+            select * {additional_query} from $id {fetch};
+            "#,
+            additional_query = self.additional_query
+        );
+
         self.db
-            .get_entity_by_id(id, self.fetch)
+            .run_get_query(query, ("id", id.into()))
             .instrument(Span::current())
             .await
     }

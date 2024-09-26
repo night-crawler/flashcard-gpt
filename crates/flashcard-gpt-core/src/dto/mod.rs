@@ -9,7 +9,7 @@ pub mod card_group;
 pub mod deck;
 pub mod deck_card;
 pub mod deck_card_group;
-mod global_settings;
+pub mod global_settings;
 pub mod history;
 pub mod llm;
 pub mod tag;

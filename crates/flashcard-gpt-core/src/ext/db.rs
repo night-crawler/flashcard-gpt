@@ -1,10 +1,12 @@
 use crate::error::CoreError;
 use crate::ext::response_ext::ResponseExt;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fmt::Debug;
 use std::future::Future;
 use std::sync::Arc;
 use surrealdb::engine::remote::ws::Client;
-use surrealdb::sql::Thing;
+use surrealdb::opt::IntoQuery;
 use surrealdb::Surreal;
 
 pub trait DbExt {
@@ -17,15 +19,15 @@ pub trait DbExt {
     ) -> impl Future<Output = Result<R, CoreError>>
     where
         W: serde::Serialize + Debug + 'static,
-        R: serde::de::DeserializeOwned;
+        R: DeserializeOwned;
 
-    fn get_entity_by_id<R>(
+    fn run_get_query<R>(
         &self,
-        id: impl Into<Thing>,
-        fetch: &'static str,
+        query: impl IntoQuery,
+        bindings: impl Serialize + 'static,
     ) -> impl Future<Output = Result<R, CoreError>>
     where
-        R: serde::de::DeserializeOwned;
+        R: DeserializeOwned;
 }
 
 impl DbExt for Surreal<Client> {
@@ -38,7 +40,7 @@ impl DbExt for Surreal<Client> {
     ) -> Result<R, CoreError>
     where
         W: serde::Serialize + Debug + 'static,
-        R: serde::de::DeserializeOwned,
+        R: DeserializeOwned,
     {
         let dto = Arc::new(dto);
         let begin = if enable_transactions {
@@ -73,34 +75,26 @@ impl DbExt for Surreal<Client> {
 
         let result: Option<R> = response.take(response.num_statements() - 1)?;
 
-        let card = result.ok_or_else(|| CoreError::CreateError(format!("{:?}", dto).into()))?;
-        Ok(card)
+        let result = result.ok_or_else(|| CoreError::CreateError(format!("{:?}", dto).into()))?;
+        Ok(result)
     }
-    async fn get_entity_by_id<R>(
+    async fn run_get_query<R>(
         &self,
-        id: impl Into<Thing>,
-        fetch: &'static str,
+        query: impl IntoQuery,
+        bindings: impl Serialize + 'static,
     ) -> Result<R, CoreError>
     where
-        R: serde::de::DeserializeOwned,
+        R: DeserializeOwned,
     {
-        let fetch = if fetch.is_empty() {
-            String::new()
-        } else {
-            format!("fetch {}", fetch)
-        };
-
-        let id = Arc::from(id.into());
-        let mut response = self
-            .query(format!("select * from $id {fetch}"))
-            .bind(("id", id.clone()))
-            .await?;
+        let query = query.into_query()?;
+        let repr = format!("{:?}", query);
+        let mut response = self.query(query).bind(bindings).await?;
         response.errors_or_ok()?;
         let result: Option<R> = response.take(0)?;
         if let Some(result) = result {
             Ok(result)
         } else {
-            Err(CoreError::NotFound(Arc::from(id.to_string())))
+            Err(CoreError::NotFound(Arc::from(repr)))
         }
     }
 }

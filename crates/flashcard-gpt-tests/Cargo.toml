@@ -16,3 +16,4 @@ flashcard-gpt-core = { path = "../flashcard-gpt-core" }
 tracing = { workspace = true }
 tokio = { workspace = true }
 bon = { workspace = true }
+paste = { workspace = true }

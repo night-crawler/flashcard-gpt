@@ -98,12 +98,14 @@ DEFINE INDEX unique_in_out ON deck_card_group FIELDS in, out UNIQUE;
 
 DEFINE TABLE global_settings TYPE ANY SCHEMAFULL PERMISSIONS FOR select, create, update, delete WHERE user = $auth.id;
 
-DEFINE FIELD daily_limit ON global_settings TYPE int DEFAULT 0 ASSERT $value >= 0 AND $value <= 0 PERMISSIONS FULL;
+DEFINE FIELD daily_limit ON global_settings TYPE int DEFAULT 0 ASSERT $value >= 0 AND $value <= 10000 PERMISSIONS FULL;
 DEFINE FIELD time ON global_settings TYPE object DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON global_settings TYPE datetime DEFAULT time::now() VALUE $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON global_settings TYPE datetime DEFAULT time::now() VALUE time::now() PERMISSIONS FULL;
 DEFINE FIELD timetable ON global_settings TYPE array<array<duration, 2>> DEFAULT [] PERMISSIONS FULL;
 DEFINE FIELD user ON global_settings TYPE record<user> ASSERT $value != NONE AND $value != NULL AND fn::exists(<string> $value) PERMISSIONS FULL;
+
+DEFINE INDEX unique_for_user ON global_settings FIELDS user UNIQUE;
 
 -- ------------------------------
 -- TABLE: history
@@ -113,7 +115,7 @@ DEFINE TABLE history TYPE ANY SCHEMAFULL PERMISSIONS FOR select, create, update,
 DEFINE FIELD user ON history TYPE record<user> ASSERT $value != NONE AND $value != NULL AND fn::exists(<string> $value) PERMISSIONS FULL;
 DEFINE FIELD deck_card ON history TYPE option<record<deck_card>> PERMISSIONS FULL;
 DEFINE FIELD deck_card_group ON history TYPE option<record<deck_card_group>> PERMISSIONS FULL;
-
+DEFINE FIELD difficulty ON history TYPE int DEFAULT 0 ASSERT $value >= 0 AND $value <= 10 PERMISSIONS FULL;
 DEFINE FIELD time ON history TYPE option<object> DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON history TYPE datetime DEFAULT time::now() VALUE $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON history TYPE datetime DEFAULT time::now() VALUE time::now() PERMISSIONS FULL;

@@ -8,7 +8,7 @@ pub type UserRepo = GenericRepo<RegisterUserDto, User, ()>;
 
 impl UserRepo {
     pub fn new_user(db: Surreal<Client>, span: tracing::Span, enable_transactions: bool) -> Self {
-        Self::new(db, span, "user", "", enable_transactions)
+        Self::new(db, span, "user", "","", enable_transactions)
     }
     #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err)]
     pub async fn list_users(&self) -> Result<Vec<User>, surrealdb::Error> {

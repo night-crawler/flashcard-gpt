@@ -8,6 +8,6 @@ pub type CardRepo = GenericRepo<CreateCardDto, CardDto, ()>;
 
 impl CardRepo {
     pub fn new_card(db: Surreal<Client>, span: Span, enable_transactions: bool) -> Self {
-        Self::new(db, span, "card", "user, tags", enable_transactions)
+        Self::new(db, span, "card", "", "user, tags", enable_transactions)
     }
 }

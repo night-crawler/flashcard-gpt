@@ -12,10 +12,18 @@ use serde::{Deserialize, Deserializer, Serialize};
 pub struct GlobalSettingsDto {
     pub id: Thing,
     pub daily_limit: u16,
-    pub time: Time,
     #[serde(deserialize_with = "from_raw", serialize_with = "to_raw")]
     pub timetable: Vec<[Duration; 2]>,
     pub user: User,
+    pub time: Time,
+}
+
+#[derive(Debug, Serialize, Deserialize, Builder)]
+pub struct CreateGlobalSettingsDto {
+    pub user: Thing,
+    pub daily_limit: u16,
+    #[serde(deserialize_with = "from_raw", serialize_with = "to_raw")]
+    pub timetable: Vec<[Duration; 2]>,
 }
 
 fn from_raw<'de, D, const N: usize>(deserializer: D) -> Result<Vec<[Duration; N]>, D::Error>

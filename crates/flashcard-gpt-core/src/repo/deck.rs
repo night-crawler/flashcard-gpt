@@ -15,7 +15,7 @@ pub type DeckRepo = GenericRepo<CreateDeckDto, DeckDto, ()>;
 
 impl DeckRepo {
     pub fn new_deck(db: Surreal<Client>, span: Span, enable_transactions: bool) -> Self {
-        Self::new(db, span, "deck", "user, tags", enable_transactions)
+        Self::new(db, span, "deck", "", "user, tags", enable_transactions)
     }
 
     #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?dto))]

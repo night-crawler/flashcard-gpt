@@ -16,7 +16,7 @@ anyhow = { workspace = true }
 strum = { workspace = true }
 strum_macros = { workspace = true }
 
-paste = "1"
+paste = { workspace = true }
 serde = { workspace = true }
 
 tracing = { workspace = true }

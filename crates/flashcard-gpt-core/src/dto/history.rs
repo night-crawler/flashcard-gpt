@@ -12,8 +12,16 @@ pub struct HistoryDto {
 
     pub user: Thing,
 
-    pub deck_card: Option<Arc<DeckCardDto>>, // Optional reference to the `deck_card` record
-    pub deck_card_group: Option<Arc<DeckCardGroupDto>>, // Optional reference to the `deck_card_group` record
+    pub deck_card: Option<Arc<DeckCardDto>>, 
+    pub deck_card_group: Option<Arc<DeckCardGroupDto>>, 
 
-    pub time: Time, // Optional time object containing created_at and updated_at
+    pub time: Time,
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Builder)]
+pub struct CreateHistoryDto {
+    pub user: Thing,
+    pub deck_card: Option<Thing>,
+    pub deck_card_group: Option<Thing>,
 }
