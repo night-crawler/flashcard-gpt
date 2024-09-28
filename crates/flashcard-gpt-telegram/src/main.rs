@@ -30,9 +30,9 @@ use llm_chain::traits::Executor as _;
 use llm_chain_openai::chatgpt::Executor;
 use markdown::{Constructs, ParseOptions};
 use teloxide::adaptors::DefaultParseMode;
+use teloxide::dispatching::dialogue::Storage;
 use teloxide::types::ParseMode;
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
-use teloxide::dispatching::dialogue::Storage;
 use tracing::{info, span, Level};
 
 fn init_card_generator_service(

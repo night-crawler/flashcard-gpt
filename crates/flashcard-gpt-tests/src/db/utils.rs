@@ -8,15 +8,15 @@ use flashcard_gpt_core::dto::user::{RegisterUserDto, User};
 use flashcard_gpt_core::repo::card::CardRepo;
 use flashcard_gpt_core::repo::card_group::CardGroupRepo;
 use flashcard_gpt_core::repo::deck::DeckRepo;
-use flashcard_gpt_core::repo::tag::TagRepo;
-use flashcard_gpt_core::repo::user::UserRepo;
 use flashcard_gpt_core::repo::global_settings::GlobalSettingsRepo;
 use flashcard_gpt_core::repo::history::HistoryRepo;
+use flashcard_gpt_core::repo::tag::TagRepo;
+use flashcard_gpt_core::repo::user::UserRepo;
+use paste::paste;
 use std::sync::Arc;
 use surrealdb::sql::Thing;
 use testresult::TestResult;
 use tracing::{span, Level};
-use paste::paste;
 
 macro_rules! create_repo_fn {
     ($name:ident) => {
@@ -30,7 +30,7 @@ macro_rules! create_repo_fn {
                 ))
             }
         }
-    }
+    };
 }
 
 create_repo_fn!(user);
@@ -40,7 +40,6 @@ create_repo_fn!(card);
 create_repo_fn!(card_group);
 create_repo_fn!(global_settings);
 create_repo_fn!(history);
-
 
 pub async fn create_user(name: &str) -> TestResult<User> {
     let repo = create_user_repo().await?;

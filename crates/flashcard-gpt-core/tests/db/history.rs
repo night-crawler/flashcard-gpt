@@ -1,12 +1,12 @@
 use flashcard_gpt_core::dto::deck_card::CreateDeckCardDto;
 use flashcard_gpt_core::dto::deck_card_group::CreateDeckCardGroupDto;
 use flashcard_gpt_core::dto::history::CreateHistoryDto;
+use flashcard_gpt_core::dto::time::Time;
 use flashcard_gpt_tests::db::utils::{
     create_card, create_card_group, create_deck, create_deck_repo, create_history_repo, create_tag,
     create_user,
 };
 use testresult::TestResult;
-use flashcard_gpt_core::dto::time::Time;
 
 #[tokio::test]
 async fn test_create() -> TestResult {
@@ -56,12 +56,18 @@ async fn test_create() -> TestResult {
             }),
         })
         .await?;
-    
+
     assert_eq!(history.difficulty, 3);
     assert!(history.deck_card.is_some());
     assert!(history.deck_card_group.is_none());
-    assert_eq!(history.time.created_at, chrono::DateTime::parse_from_rfc3339("2021-08-01T00:00:00Z")?.to_utc());
-    assert_eq!(history.time.updated_at, chrono::DateTime::parse_from_rfc3339("2021-08-01T00:00:00Z")?.to_utc());
+    assert_eq!(
+        history.time.created_at,
+        chrono::DateTime::parse_from_rfc3339("2021-08-01T00:00:00Z")?.to_utc()
+    );
+    assert_eq!(
+        history.time.updated_at,
+        chrono::DateTime::parse_from_rfc3339("2021-08-01T00:00:00Z")?.to_utc()
+    );
 
     let card_group = create_card_group()
         .user(user.id.clone())
@@ -70,14 +76,14 @@ async fn test_create() -> TestResult {
         .cards([&card])
         .call()
         .await?;
-    
+
     let deck_card_group = deck_repo
         .relate_card_group(CreateDeckCardGroupDto {
             deck: deck.id.clone(),
             card_group: card_group.id.clone(),
         })
         .await?;
-    
+
     let history = repo
         .create(CreateHistoryDto {
             user: user.id.clone(),
@@ -87,7 +93,7 @@ async fn test_create() -> TestResult {
             time: None,
         })
         .await?;
-    
+
     assert!(history.deck_card.is_none());
     assert!(history.deck_card_group.is_some());
 

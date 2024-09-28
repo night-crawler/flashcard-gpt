@@ -8,6 +8,6 @@ pub mod error;
 pub mod ext;
 pub mod llm;
 pub mod logging;
+pub mod macros;
 pub mod reexports;
 pub mod repo;
-pub mod macros;

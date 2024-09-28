@@ -2,7 +2,7 @@
 macro_rules! single_object_query {
     ($db:expr, $query:expr, $( $binding:expr ),* ) => {{
         let mut query = $db.query($query);
-        
+
         $(
             query = query.bind($binding);
         )*
@@ -23,7 +23,7 @@ macro_rules! single_object_query {
 macro_rules! multi_object_query {
     ($db:expr, $query:expr, $( $binding:expr ),* ) => {{
         let mut query = $db.query($query);
-        
+
         $(
             query = query.bind($binding);
         )*

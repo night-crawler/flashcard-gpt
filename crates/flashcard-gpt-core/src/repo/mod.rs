@@ -4,6 +4,6 @@ pub mod card_group;
 pub mod deck;
 pub mod generic_repo;
 pub mod global_settings;
+pub mod history;
 pub mod tag;
 pub mod user;
-pub mod history;

@@ -2,11 +2,11 @@ use crate::dto::binding::{BindingDto, GetOrCreateBindingDto};
 use crate::error::CoreError;
 use crate::ext::response_ext::ResponseExt;
 use crate::repo::generic_repo::GenericRepo;
+use crate::single_object_query;
 use std::sync::Arc;
 use surrealdb::engine::remote::ws::Client;
 use surrealdb::Surreal;
 use tracing::Span;
-use crate::single_object_query;
 
 pub type BindingRepo = GenericRepo<GetOrCreateBindingDto, BindingDto, ()>;
 impl BindingRepo {

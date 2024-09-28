@@ -5,13 +5,13 @@ use crate::dto::deck_card_group::{CreateDeckCardGroupDto, DeckCardGroupDto};
 use crate::error::CoreError;
 use crate::ext::response_ext::ResponseExt;
 use crate::repo::generic_repo::GenericRepo;
+use crate::{multi_object_query, single_object_query};
 use chrono::Utc;
 use std::sync::Arc;
 use surrealdb::engine::remote::ws::Client;
 use surrealdb::sql::Thing;
 use surrealdb::Surreal;
 use tracing::Span;
-use crate::{multi_object_query, single_object_query};
 
 pub type DeckRepo = GenericRepo<CreateDeckDto, DeckDto, ()>;
 
@@ -34,7 +34,7 @@ impl DeckRepo {
             begin_transaction = self.begin_transaction_statement(),
             commit_transaction = self.commit_transaction_statement()
         );
-        
+
         single_object_query!(self.db, &query, ("dto", dto))
     }
 
@@ -57,7 +57,7 @@ impl DeckRepo {
             begin_transaction = self.begin_transaction_statement(),
             commit_transaction = self.commit_transaction_statement()
         );
-        
+
         single_object_query!(self.db, &query, ("dto", dto))
     }
     pub async fn list_cards(
