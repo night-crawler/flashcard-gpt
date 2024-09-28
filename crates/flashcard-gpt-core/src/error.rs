@@ -5,8 +5,12 @@ use tracing_subscriber::util::TryInitError;
 pub enum CoreError {
     #[error("Query failed: {0:?}")]
     DbError(#[from] surrealdb::Error),
-    #[error("Failed to create: {0}")]
-    CreateError(Arc<str>),
+    
+    #[error("Database error: {0}")]
+    DbQueryHasErrors(Arc<str>),
+
+    #[error("Result not found: {0}")]
+    DbQueryResultNotFound(Arc<str>),
 
     #[error("Not found: {0}")]
     NotFound(Arc<str>),

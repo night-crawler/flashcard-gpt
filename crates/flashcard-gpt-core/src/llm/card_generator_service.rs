@@ -50,7 +50,7 @@ implementation choices.
 Focus on **non-obvious** aspects and design decisions that enhance understanding of the 
 code's logic and purpose at a high level. 
 Avoid trivial or self-evident comments. Do not comment trivia. 
-Clarify why certain concatenation decisions impact the outcome, and how this strategy 
+Clarify why and how certain decisions impact the outcome, and how this strategy 
 leads to the correct or optimal solution in a broader context. If there are existing 
 comments, leave them intact and improve on them below.
 Return the commented code only.
@@ -79,14 +79,17 @@ For a given code you create a nice idea-focused article, adding multiple steps i
         let create_flashcards_step = CustomStep {
             name: Arc::from("Create Flashcards"),
             system_template: Arc::from(r#"
-You a bot converting given leetcode code and article into flashcards. 
-You provide flashcards with a necessary amount of hints that would point to the right direction without exposing solution. 
-The amount of hints depends on complexity of a problem. It must be enough to remember the solution. 
+You a bot converting given leetcode code and article into flashcards.
+You provide flashcards with a necessary amount of hints that would point to the right direction
+without exposing solution completely, but you can share key insights progressively: the next card
+can expose more details than the previous.
+The amount of hints depends on the complexity of a problem.
+It must be enough to remember the solution.
 The given problem can have more than one flashcard if it is necessary. Don't create more than 3 cards.
 You respond in this JSON format ONLY:
 
 {
-    importance: <rate the difficulty of the card group on scale 1-10>,  
+    importance: <rate the difficulty of the problem on scale 1-10>,  
     difficulty: <rate the importance of the problem in terms of its popularity and popularity of the concepts used in the solution on FAANG interviews>,
     title: <The problem title>,
     tags: [<create a list of tags for the problem and solution>],
@@ -99,7 +102,7 @@ You respond in this JSON format ONLY:
             front: <card front>, 
             back: <card back>,
             hints: [<list of hints>], 
-            difficulty: <rate the difficulty of the card on scale 1-10>,  
+            difficulty: <rate the difficulty of the card problem on scale 1-10>,  
             importance: <rate the importance of the problem in terms of its popularity and popularity of the concepts used in the solution on FAANG interviews>,
             tags: [<create a list of tags for the problem and solution>]
         },

@@ -5,11 +5,13 @@ use crate::dto::deck_card_group::{CreateDeckCardGroupDto, DeckCardGroupDto};
 use crate::error::CoreError;
 use crate::ext::response_ext::ResponseExt;
 use crate::repo::generic_repo::GenericRepo;
+use chrono::Utc;
 use std::sync::Arc;
 use surrealdb::engine::remote::ws::Client;
 use surrealdb::sql::Thing;
 use surrealdb::Surreal;
 use tracing::Span;
+use crate::{multi_object_query, single_object_query};
 
 pub type DeckRepo = GenericRepo<CreateDeckDto, DeckDto, ()>;
 
@@ -20,7 +22,6 @@ impl DeckRepo {
 
     #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?dto))]
     pub async fn relate_card(&self, dto: CreateDeckCardDto) -> Result<DeckCardDto, CoreError> {
-        let dto = Arc::new(dto);
         let query = format!(
             r#"
             {begin_transaction}
@@ -33,14 +34,8 @@ impl DeckRepo {
             begin_transaction = self.begin_transaction_statement(),
             commit_transaction = self.commit_transaction_statement()
         );
-
-        let mut response = self.db.query(query).bind(("dto", dto.clone())).await?;
-        response.errors_or_ok()?;
-        let deck_card: Option<DeckCardDto> = response.take(response.num_statements() - 1)?;
-        let deck_card =
-            deck_card.ok_or_else(|| CoreError::CreateError(format!("{:?}", dto).into()))?;
-
-        Ok(deck_card)
+        
+        single_object_query!(self.db, &query, ("dto", dto))
     }
 
     #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?dto))]
@@ -62,14 +57,8 @@ impl DeckRepo {
             begin_transaction = self.begin_transaction_statement(),
             commit_transaction = self.commit_transaction_statement()
         );
-
-        let mut response = self.db.query(query).bind(("dto", dto.clone())).await?;
-        response.errors_or_ok()?;
-        let deck_card: Option<DeckCardGroupDto> = response.take(response.num_statements() - 1)?;
-        let deck_card =
-            deck_card.ok_or_else(|| CoreError::CreateError(format!("{:?}", dto).into()))?;
-
-        Ok(deck_card)
+        
+        single_object_query!(self.db, &query, ("dto", dto))
     }
     pub async fn list_cards(
         &self,
@@ -101,5 +90,69 @@ impl DeckRepo {
         response.errors_or_ok()?;
 
         Ok(response.take(response.num_statements() - 1)?)
+    }
+
+    pub async fn get_top_ranked_card_group(
+        &self,
+        user: impl Into<Thing>,
+        since: chrono::DateTime<Utc>,
+    ) -> Result<Vec<DeckCardGroupDto>, CoreError> {
+        let query = r#"
+        select 
+            *,
+            fn::deck_card_group_answered_times(id, <datetime> $since) as used,
+            fn::rank(
+                out.importance, 
+                out.difficulty, 
+                fn::trend(out.id).slope, 
+                fn::since_last(out.id)
+            ) as rank
+            from deck_card_group
+            where 
+                out.user = $user and
+                in.settings.daily_limit > fn::deck_card_group_answered_times(id, <datetime> $since)
+            order by rank desc
+            limit 1
+            fetch 
+                in, out,
+                in.user, in.tags, out.user, out.cards, out.tags,
+                out.cards.tags, out.cards.user
+            parallel
+        ;
+        "#;
+
+        multi_object_query!(self.db, query, ("user", user.into()), ("since", since))
+    }
+
+    pub async fn get_top_ranked_card(
+        &self,
+        user: impl Into<Thing>,
+        since: chrono::DateTime<Utc>,
+    ) -> Result<Vec<DeckCardDto>, CoreError> {
+        let query = r#"
+        select 
+            *,
+            fn::deck_card_answered_times(id, <datetime> $since) as used,
+            fn::rank(
+                out.importance, 
+                out.difficulty, 
+                fn::trend(out.id).slope, 
+                fn::since_last(out.id)
+            ) as rank
+            from deck_card
+            where 
+                out.user = $user and
+                in.settings.daily_limit > fn::deck_card_answered_times(id, <datetime> $since) and
+                fn::appears_in_card_groups_in_this_deck(out, in) = 0
+            order by rank desc
+            limit 1
+            fetch 
+                in, out,
+                in.user, in.tags, out.user, out.tags
+            parallel
+        ;
+        "#;
+
+        multi_object_query!(self.db, query, ("user", user.into()), ("since", since))
     }
 }

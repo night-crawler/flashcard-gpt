@@ -32,6 +32,7 @@ use markdown::{Constructs, ParseOptions};
 use teloxide::adaptors::DefaultParseMode;
 use teloxide::types::ParseMode;
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
+use teloxide::dispatching::dialogue::Storage;
 use tracing::{info, span, Level};
 
 fn init_card_generator_service(
@@ -83,10 +84,11 @@ async fn main() -> anyhow::Result<()> {
     let span = span!(Level::INFO, "root");
 
     let bot: DefaultParseMode<Bot> = Bot::from_env().parse_mode(ParseMode::Html);
+    let state = InMemStorage::<State>::new();
 
     Dispatcher::builder(bot, schema())
         .dependencies(dptree::deps![
-            InMemStorage::<State>::new(),
+            state,
             repositories,
             span,
             card_generation_service,

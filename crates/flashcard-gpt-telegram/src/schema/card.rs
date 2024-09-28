@@ -1,18 +1,17 @@
 use crate::chat_manager::ChatManager;
 use crate::command::CardCommand;
+use crate::ext::StrExt;
 use crate::patch_state;
 use crate::schema::receive_next;
+use crate::schema::root::cancel;
 use crate::state::{State, StateFields};
 use anyhow::anyhow;
-use std::collections::BTreeSet;
-
-use crate::ext::StrExt;
-use crate::schema::root::cancel;
 use flashcard_gpt_core::dto::card::CreateCardDto;
 use flashcard_gpt_core::dto::deck_card::CreateDeckCardDto;
 use flashcard_gpt_core::dto::llm::GptCardGroup;
 use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
 use serde_json::Value;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
@@ -368,7 +367,10 @@ async fn generate_cards(
     // for card in cg.cards {
     //     manager.send_card(card.as_ref()).await?;
     // }
-    
+
+    manager
+        .update_state(State::InsideCardMenu(StateFields::Empty))
+        .await?;
 
     Ok(())
 }

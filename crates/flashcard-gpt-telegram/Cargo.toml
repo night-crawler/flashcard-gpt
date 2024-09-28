@@ -9,6 +9,7 @@ repository.workspace = true
 
 [dependencies]
 tokio = { workspace = true }
+tokio-stream = { workspace = true }
 flashcard-gpt-core = { path = "../flashcard-gpt-core" }
 teloxide = { workspace = true }
 anyhow = { workspace = true }

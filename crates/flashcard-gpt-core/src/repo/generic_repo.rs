@@ -1,7 +1,9 @@
 use crate::error::CoreError;
 use crate::ext::db::DbExt;
 use crate::ext::response_ext::ResponseExt;
+use crate::single_object_query;
 use std::fmt::Debug;
+use std::sync::Arc;
 use surrealdb::engine::remote::ws::Client;
 use surrealdb::sql::Thing;
 use surrealdb::Surreal;
@@ -92,10 +94,7 @@ where
             additional_query = self.additional_query
         );
 
-        self.db
-            .run_get_query(query, ("id", id.into()))
-            .instrument(Span::current())
-            .await
+        single_object_query!(self.db, &query, ("id", id.into()))
     }
 
     pub async fn list_by_user_id(&self, id: impl Into<Thing>) -> Result<Vec<Read>, CoreError> {

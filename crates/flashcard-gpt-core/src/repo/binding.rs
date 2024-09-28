@@ -6,6 +6,7 @@ use std::sync::Arc;
 use surrealdb::engine::remote::ws::Client;
 use surrealdb::Surreal;
 use tracing::Span;
+use crate::single_object_query;
 
 pub type BindingRepo = GenericRepo<GetOrCreateBindingDto, BindingDto, ()>;
 impl BindingRepo {
@@ -36,7 +37,7 @@ impl BindingRepo {
     ) -> Result<BindingDto, CoreError> {
         let query = r#"
             begin transaction;
-            $binding = select * from binding where source_id=$source_id fetch user;
+            $binding = select * from binding where source_id=$dto.source_id fetch user;
             if $binding {
                 return $binding[0];
             };
@@ -58,19 +59,6 @@ impl BindingRepo {
             commit transaction;
         "#;
 
-        let source_id = dto.source_id.clone();
-
-        let mut response = self
-            .db
-            .query(query)
-            .bind(("source_id", source_id.clone()))
-            .bind(("dto", dto))
-            .await?;
-        response.errors_or_ok()?;
-
-        let binding: Option<BindingDto> = response.take(0)?;
-        let binding = binding.ok_or(CoreError::CreateError(source_id))?;
-
-        Ok(binding)
+        single_object_query!(self.db, query, ("dto", dto))
     }
 }

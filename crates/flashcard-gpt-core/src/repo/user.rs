@@ -1,6 +1,9 @@
 use crate::dto::user::{RegisterUserDto, User};
 use crate::error::CoreError;
+use crate::ext::response_ext::ResponseExt;
 use crate::repo::generic_repo::GenericRepo;
+use crate::single_object_query;
+use std::sync::Arc;
 use surrealdb::engine::remote::ws::Client;
 use surrealdb::Surreal;
 
@@ -8,7 +11,7 @@ pub type UserRepo = GenericRepo<RegisterUserDto, User, ()>;
 
 impl UserRepo {
     pub fn new_user(db: Surreal<Client>, span: tracing::Span, enable_transactions: bool) -> Self {
-        Self::new(db, span, "user", "","", enable_transactions)
+        Self::new(db, span, "user", "", "", enable_transactions)
     }
     #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err)]
     pub async fn list_users(&self) -> Result<Vec<User>, surrealdb::Error> {
@@ -27,12 +30,6 @@ impl UserRepo {
             };
         "#;
 
-        let email = user.email.clone();
-
-        let mut response = self.db.query(query).bind(("user", user)).await?;
-
-        let created_user: Option<User> = response.take(0)?;
-        let created_user = created_user.ok_or(CoreError::CreateError(email))?;
-        Ok(created_user)
+        single_object_query!(self.db, query, ("user", user))
     }
 }

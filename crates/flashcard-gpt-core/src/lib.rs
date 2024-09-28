@@ -10,3 +10,4 @@ pub mod llm;
 pub mod logging;
 pub mod reexports;
 pub mod repo;
+pub mod macros;
