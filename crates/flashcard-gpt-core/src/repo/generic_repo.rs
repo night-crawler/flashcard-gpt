@@ -1,7 +1,7 @@
 use crate::error::CoreError;
 use crate::ext::db::DbExt;
 use crate::ext::response_ext::ResponseExt;
-use crate::single_object_query;
+use crate::{multi_object_query, single_object_query};
 use std::fmt::Debug;
 use std::sync::Arc;
 use surrealdb::engine::remote::ws::Client;
@@ -82,41 +82,41 @@ where
 
     #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?id))]
     pub async fn get_by_id(&self, id: impl Into<Thing> + Debug) -> Result<Read, CoreError> {
-        let fetch = if self.fetch.is_empty() {
-            String::new()
-        } else {
-            format!("fetch {}", self.fetch)
-        };
         let query = format!(
             r#"
             select * {additional_query} from $id {fetch};
             "#,
-            additional_query = self.additional_query
+            additional_query = self.additional_query,
+            fetch = self.fetch_statement()
         );
 
         single_object_query!(self.db, &query, ("id", id.into()))
     }
 
     pub async fn list_by_user_id(&self, id: impl Into<Thing>) -> Result<Vec<Read>, CoreError> {
-        let fetch = if self.fetch.is_empty() {
-            String::new()
-        } else {
-            format!("fetch {}", self.fetch)
-        };
         let query = format!(
             r#"
-            select * from {table_name} where user=$user_id {fetch};
+            select * {additional_query} from {table_name} where user=$user_id {fetch};
             "#,
             table_name = self.table_name,
-            fetch = fetch
+            fetch = self.fetch_statement(),
+            additional_query = self.additional_query
+        );
+        
+        multi_object_query!(self.db, &query, ("user_id", id.into()))
+    }
+
+    pub async fn get_by_user_id(&self, id: impl Into<Thing>) -> Result<Read, CoreError> {
+        let query = format!(
+            r#"
+            select * {additional_query} from {table_name} where user=$user_id {fetch};
+            "#,
+            table_name = self.table_name,
+            fetch = self.fetch_statement(),
+            additional_query = self.additional_query
         );
 
-        let mut response = self.db.query(query).bind(("user_id", id.into())).await?;
-
-        response.errors_or_ok()?;
-
-        let result: Vec<Read> = response.take(0)?;
-        Ok(result)
+        single_object_query!(self.db, &query, ("user_id", id.into()))
     }
 
     pub async fn delete(&self, id: impl Into<Thing>) -> Result<(), CoreError> {
@@ -133,6 +133,19 @@ where
 
         Ok(())
     }
+    
+    pub async fn list_all(&self) -> Result<Vec<Read>, CoreError> {
+        let query = format!(
+            r#"
+            select * {additional_query} from {table_name} {fetch}
+            "#,
+            table_name = self.table_name,
+            fetch = self.fetch_statement(),
+            additional_query = self.additional_query
+        );
+        
+        multi_object_query!(self.db, &query,)
+    }
 
     pub fn begin_transaction_statement(&self) -> &'static str {
         if self.enable_transactions {
@@ -147,6 +160,14 @@ where
             "commit transaction;"
         } else {
             ""
+        }
+    }
+    
+    pub fn fetch_statement(&self) -> String {
+        if self.fetch.is_empty() {
+            String::new()
+        } else {
+            format!("fetch {}", self.fetch)
         }
     }
 }

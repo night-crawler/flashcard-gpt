@@ -12,11 +12,13 @@ pub mod ext;
 pub mod llm;
 pub mod macros;
 pub mod message_render;
+mod notifier_task;
 pub mod schema;
 pub mod state;
 
 use crate::db::repositories::Repositories;
 use crate::ext::markdown::MarkdownFormatter;
+use crate::notifier_task::init_notifier;
 use crate::schema::schema;
 use crate::state::{FlashGptDialogue, State};
 use flashcard_gpt_core::llm::card_generator::CardGenerator;
@@ -29,11 +31,12 @@ use llm_chain::options::{ModelRef, Opt, Options};
 use llm_chain::traits::Executor as _;
 use llm_chain_openai::chatgpt::Executor;
 use markdown::{Constructs, ParseOptions};
+use std::sync::Arc;
 use teloxide::adaptors::DefaultParseMode;
-use teloxide::dispatching::dialogue::Storage;
 use teloxide::types::ParseMode;
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
-use tracing::{info, span, Level};
+use tokio::task::JoinSet;
+use tracing::{info, span, warn, Level};
 
 fn init_card_generator_service(
     repositories: &Repositories,
@@ -84,9 +87,17 @@ async fn main() -> anyhow::Result<()> {
     let span = span!(Level::INFO, "root");
 
     let bot: DefaultParseMode<Bot> = Bot::from_env().parse_mode(ParseMode::Html);
-    let state = InMemStorage::<State>::new();
+    let state: Arc<InMemStorage<State>> = InMemStorage::<State>::new();
 
-    Dispatcher::builder(bot, schema())
+    let notifier = init_notifier(
+        bot.clone(),
+        state.clone(),
+        formatter.clone(),
+        repositories.clone(),
+        span.clone(),
+    );
+
+    let mut dispatch_future = Dispatcher::builder(bot, schema())
         .dependencies(dptree::deps![
             state,
             repositories,
@@ -95,9 +106,21 @@ async fn main() -> anyhow::Result<()> {
             formatter
         ])
         .enable_ctrlc_handler()
-        .build()
-        .dispatch()
-        .await;
+        .build();
+
+    let mut join_set = JoinSet::new();
+    join_set.spawn(async move {
+        dispatch_future.dispatch().await;
+        warn!("Telegram dispatch task exited");
+        Ok(())
+    });
+
+    join_set.spawn(notifier);
+
+    // wait for any task to complete and exit
+    if let Some(result) = join_set.join_next().await {
+        result??;
+    }
 
     Ok(())
 }

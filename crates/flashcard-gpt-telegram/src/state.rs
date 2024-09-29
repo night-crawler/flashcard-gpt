@@ -1,5 +1,7 @@
+use bon::Builder;
 use crate::ext::rendering::{DisplayJoinOrDash, OptionDisplayExt};
 use crate::message_render::RenderMessageTextHelper;
+use flashcard_gpt_core::reexports::db::sql::Thing;
 use flashcard_gpt_core::reexports::json::Value;
 use paste::paste;
 use std::collections::BTreeSet;
@@ -69,6 +71,9 @@ pub enum State {
 
     #[strum(props(name = "Confirm card generation"))]
     ReceiveGenerateCardConfirm(StateFields),
+
+    #[strum(props(name = "Answering"))]
+    Answering(StateFields),
 }
 
 impl Default for State {
@@ -97,6 +102,36 @@ impl State {
             invalid_input,
             repr,
             prompt,
+        }
+    }
+
+    pub fn is_interruptible(&self) -> bool {
+        match self {
+            State::InsideRootMenu(_) => true,
+            State::InsideUserMenu(_) => true,
+            State::InsideDeckMenu(_) => true,
+            State::InsideCardMenu(_) => true,
+            State::InsideCardGroupMenu(_) => true,
+            State::InsideTagMenu(_) => true,
+            State::ReceiveDeckTitle(_) => false,
+            State::ReceiveDeckTags(_) => false,
+            State::ReceiveDeckDescription(_) => false,
+            State::ReceiveDeckParent(_) => false,
+            State::ReceiveDeckSettingsDailyLimit(_) => false,
+            State::ReceiveDeckConfirm(_) => false,
+            State::ReceiveCardTitle(_) => false,
+            State::ReceiveCardFront(_) => false,
+            State::ReceiveCardBack(_) => false,
+            State::ReceiveCardHints(_) => false,
+            State::ReceiveCardDifficulty(_) => false,
+            State::ReceiveCardImportance(_) => false,
+            State::ReceiveCardTags(_) => false,
+            State::ReceiveCardDeck(_) => false,
+            State::ReceiveCardConfirm(_) => false,
+            State::ReceiveGenerateCardDeck(_) => false,
+            State::ReceiveGenerateCardPrompt(_) => false,
+            State::ReceiveGenerateCardConfirm(_) => false,
+            State::Answering(_) => false,
         }
     }
 }
@@ -129,6 +164,13 @@ pub enum StateFields {
     GenerateCard {
         deck: Option<Arc<str>>,
         prompt: Option<Arc<str>>,
+    },
+
+    Answer {
+        deck_card_group_id: Option<Thing>,
+        deck_card_group_card_seq: Option<usize>,
+        deck_card_id: Option<Thing>,
+        difficulty: Option<u8>,
     },
 }
 
@@ -178,6 +220,21 @@ impl Display for StateFields {
                 writeln!(f, "<b>Deck:</b> {}", deck.to_string_or_dash())?;
                 write!(f, "<b>Prompt:</b> {}", prompt.to_string_or_dash())
             }
+            StateFields::Answer {
+                deck_card_group_id: card_group_id,
+                deck_card_group_card_seq: card_group_card_seq,
+                deck_card_id: card_id,
+                difficulty,
+            } => {
+                writeln!(
+                    f,
+                    "<b>Card Group:</b> {} / {}",
+                    card_group_id.to_string_or_dash(),
+                    card_group_card_seq.to_string_or_dash()
+                )?;
+                writeln!(f, "<b>Card:</b> {}", card_id.to_string_or_dash())?;
+                write!(f, "<b>Difficulty:</b> {}", difficulty.to_string_or_dash())
+            }
         }
     }
 }
@@ -206,6 +263,15 @@ impl StateFields {
             description: None,
             parent: None,
             daily_limit: None,
+        }
+    }
+    
+    pub fn default_answer() -> Self {
+        Self::Answer {
+            deck_card_group_id: None,
+            deck_card_group_card_seq: None,
+            deck_card_id: None,
+            difficulty: None,
         }
     }
 }
@@ -266,5 +332,6 @@ state_variants! {
     ReceiveCardDeck,
     ReceiveGenerateCardDeck,
     ReceiveGenerateCardPrompt,
-    ReceiveGenerateCardConfirm
+    ReceiveGenerateCardConfirm,
+    Answering
 }

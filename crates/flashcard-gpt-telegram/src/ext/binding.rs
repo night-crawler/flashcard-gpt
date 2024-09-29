@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use flashcard_gpt_core::dto::binding::{BindingDto, GetOrCreateBindingDto};
 use flashcard_gpt_core::error::CoreError;
 use flashcard_gpt_core::repo::binding::BindingRepo;
@@ -156,5 +157,30 @@ where
                 "No user or chat found in the update: {value:?}"
             ))
         }
+    }
+}
+
+use crate::ext::json_value::ValueExt;
+
+pub trait ChatIdExt {
+    fn get_chat_id(&self) -> anyhow::Result<ChatId>;
+}
+
+impl ChatIdExt for BindingDto {
+    fn get_chat_id(&self) -> anyhow::Result<ChatId> {
+        let chat_id = self
+            .data
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("No data found in binding identity"))?
+            .as_ref()
+            .get_value_by("chat")
+            .ok_or_else(|| anyhow!("Missing chat in binding {:?}", self))?
+            .get_value_by("id")
+            .ok_or_else(|| anyhow!("Missing chat id in binding {:?}", self))?
+            .as_number()
+            .ok_or_else(|| anyhow!("Not a number chat id in binding {:?}", self))?
+            .as_i64()
+            .ok_or_else(|| anyhow!("Invalid chat id in binding {:?}", self))?;
+        Ok(ChatId(chat_id))
     }
 }

@@ -1,6 +1,7 @@
 use crate::chat_manager::ChatManager;
 use crate::command::{
-    CardCommand, CardGroupCommand, CommandExt, DeckCommand, RootCommand, TagCommand, UserCommand,
+    AnsweringCommand, CardCommand, CardGroupCommand, CommandExt, DeckCommand, RootCommand,
+    TagCommand, UserCommand,
 };
 use crate::schema::deck::handle_create_deck;
 use crate::state::{FlashGptDialogue, State, StateFields};
@@ -15,7 +16,7 @@ use teloxide::types::{
 };
 use teloxide::utils::command::BotCommands;
 use teloxide::Bot;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 pub fn root_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let root_command_handler = teloxide::filter_command::<RootCommand, _>()
@@ -195,6 +196,10 @@ pub(super) async fn receive_root_menu_item(
                 .update_state(State::ReceiveGenerateCardPrompt(fields))
                 .await?;
             manager.send_state_and_prompt().await?;
+        }
+        (Some(State::Answering(mut fields)), item)
+            if let Ok(cmd) = AnsweringCommand::from_str(item) => {
+            warn!(?cmd, "Handle me");
         }
         (_, _) => {}
     }

@@ -37,7 +37,8 @@ impl GlobalSettingsRepo {
             $id = (create global_settings content {{
                 user: $dto.user,
                 daily_limit: $dto.daily_limit,
-                timetable: $timetable
+                timetable: $timetable,
+                timezone: $dto.timezone,
             }}).id;
             return select * {additional_query} from $id fetch user;
             {commit}

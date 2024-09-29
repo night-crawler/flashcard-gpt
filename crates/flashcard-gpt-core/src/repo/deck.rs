@@ -92,7 +92,7 @@ impl DeckRepo {
         Ok(response.take(response.num_statements() - 1)?)
     }
 
-    pub async fn get_top_ranked_card_group(
+    pub async fn get_top_ranked_card_groups(
         &self,
         user: impl Into<Thing>,
         since: chrono::DateTime<Utc>,
@@ -100,7 +100,7 @@ impl DeckRepo {
         let query = r#"
         select 
             *,
-            fn::deck_card_group_answered_times(id, <datetime> $since) as used,
+            fn::deck_card_group_answered_times(id, <datetime> $since) as num_answered,
             fn::rank(
                 out.importance, 
                 out.difficulty, 
@@ -112,7 +112,7 @@ impl DeckRepo {
                 out.user = $user and
                 in.settings.daily_limit > fn::deck_card_group_answered_times(id, <datetime> $since)
             order by rank desc
-            limit 1
+            limit 10
             fetch 
                 in, out,
                 in.user, in.tags, out.user, out.cards, out.tags,
@@ -124,7 +124,7 @@ impl DeckRepo {
         multi_object_query!(self.db, query, ("user", user.into()), ("since", since))
     }
 
-    pub async fn get_top_ranked_card(
+    pub async fn get_top_ranked_cards(
         &self,
         user: impl Into<Thing>,
         since: chrono::DateTime<Utc>,
@@ -132,7 +132,7 @@ impl DeckRepo {
         let query = r#"
         select 
             *,
-            fn::deck_card_answered_times(id, <datetime> $since) as used,
+            fn::deck_card_answered_times(id, <datetime> $since) as num_answered,
             fn::rank(
                 out.importance, 
                 out.difficulty, 
@@ -145,7 +145,7 @@ impl DeckRepo {
                 in.settings.daily_limit > fn::deck_card_answered_times(id, <datetime> $since) and
                 fn::appears_in_card_groups_in_this_deck(out, in) = 0
             order by rank desc
-            limit 1
+            limit 10
             fetch 
                 in, out,
                 in.user, in.tags, out.user, out.tags
@@ -154,5 +154,42 @@ impl DeckRepo {
         "#;
 
         multi_object_query!(self.db, query, ("user", user.into()), ("since", since))
+    }
+
+    pub async fn get_deck_card_group(
+        &self,
+        id: impl Into<Thing>,
+    ) -> Result<DeckCardGroupDto, CoreError> {
+        let query = r#"
+         select 
+            *
+            from deck_card_group
+            where id = $id 
+            fetch 
+                in, out,
+                in.user, in.tags, out.user, out.cards, out.tags,
+                out.cards.tags, out.cards.user
+        ;
+        "#;
+
+        single_object_query!(self.db, query, ("id", id.into()))
+    }
+
+    pub async fn get_deck_card(
+        &self,
+        id: impl Into<Thing>,
+    ) -> Result<DeckCardDto, CoreError> {
+        let query = r#"
+         select 
+            *
+            from deck_card
+            where id = $id 
+            fetch 
+                in, out,
+                in.user, in.tags, out.user, out.tags
+        ;
+        "#;
+
+        single_object_query!(self.db, query, ("id", id.into()))
     }
 }

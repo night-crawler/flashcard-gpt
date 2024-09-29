@@ -1,4 +1,5 @@
 use chrono::Duration;
+use chrono_tz::Tz;
 use flashcard_gpt_core::dto::global_settings::CreateGlobalSettingsDto;
 use flashcard_gpt_tests::db::utils::{create_global_settings_repo, create_user};
 use testresult::TestResult;
@@ -16,6 +17,7 @@ async fn test_create() -> TestResult {
                 [Duration::hours(13), Duration::hours(14)],
                 [Duration::hours(17), Duration::hours(18)],
             ],
+            timezone: Tz::Europe__Dublin,
         })
         .await?;
 
@@ -39,6 +41,7 @@ async fn test_create() -> TestResult {
                 [Duration::hours(13), Duration::hours(14)],
                 [Duration::hours(17), Duration::hours(18)],
             ],
+            timezone: Tz::Europe__Dublin,
         })
         .await;
     assert!(result.is_err());

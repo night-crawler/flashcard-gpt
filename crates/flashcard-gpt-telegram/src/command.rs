@@ -96,6 +96,41 @@ pub enum TagCommand {
     List,
 }
 
+
+#[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString, Debug)]
+#[command(rename_rule = "lowercase")]
+pub enum AnsweringCommand {
+    /// Show Article
+    Article,
+    /// Commit the answer with perceived difficulty
+    Commit(u8),
+    /// Skip
+    Skip,
+    /// Next card in the Card Group
+    Next,
+    /// Cancel answering
+    Cancel,
+}
+
+impl CommandExt for AnsweringCommand {
+    fn get_menu_items() -> impl Iterator<Item=InlineKeyboardButton> {
+        AnsweringCommand::iter().map(|cmd| InlineKeyboardButton::callback(cmd.as_ref(), cmd.as_ref()))
+    }
+
+    fn get_menu_name() -> &'static str {
+        "Answering"
+    }
+
+    fn get_corresponding_state() -> State {
+        State::Answering(StateFields::Answer {
+            deck_card_group_id: None,
+            deck_card_group_card_seq: None,
+            deck_card_id: None,
+            difficulty: None,
+        })
+    }
+}
+
 impl CommandExt for RootCommand {
     fn get_menu_items() -> impl Iterator<Item = InlineKeyboardButton> {
         RootCommand::iter().map(|cmd| InlineKeyboardButton::callback(cmd.as_ref(), cmd.as_ref()))

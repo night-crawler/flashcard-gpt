@@ -15,10 +15,12 @@ use teloxide::prelude::Update;
 use teloxide::types::UpdateKind;
 use teloxide::{dptree, Bot};
 use tracing::{debug, warn, Span};
+use crate::schema::answer::answering_schema;
 
 mod card;
 mod deck;
 mod root;
+mod answer;
 
 pub fn schema() -> UpdateHandler<anyhow::Error> {
     let root_menu_handler = Update::filter_callback_query().endpoint(receive_root_menu_item);
@@ -31,6 +33,7 @@ pub fn schema() -> UpdateHandler<anyhow::Error> {
         .branch(card_schema())
         .branch(deck_schema())
         .branch(root_schema())
+        .branch(answering_schema())
         .branch(root_menu_handler)
         .branch(Update::filter_message().branch(dptree::endpoint(invalid_state)));
 

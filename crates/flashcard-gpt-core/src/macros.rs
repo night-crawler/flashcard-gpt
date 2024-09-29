@@ -22,6 +22,7 @@ macro_rules! single_object_query {
 #[macro_export]
 macro_rules! multi_object_query {
     ($db:expr, $query:expr, $( $binding:expr ),* ) => {{
+        #[allow(unused_mut)]
         let mut query = $db.query($query);
 
         $(

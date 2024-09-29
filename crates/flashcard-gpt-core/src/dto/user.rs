@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use crate::dto::time::Time;
 use bon::Builder;
 use serde::{Deserialize, Serialize};
@@ -29,5 +30,11 @@ impl From<User> for Thing {
 impl From<&User> for Thing {
     fn from(value: &User) -> Self {
         value.id.clone()
+    }
+}
+
+impl Display for User {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "#{} {}", self.id, self.email)
     }
 }

@@ -103,6 +103,7 @@ DEFINE FIELD time ON global_settings TYPE object DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON global_settings TYPE datetime DEFAULT time::now() VALUE $value OR $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON global_settings TYPE datetime DEFAULT time::now() VALUE $value OR time::now() PERMISSIONS FULL;
 DEFINE FIELD timetable ON global_settings TYPE array<array<duration, 2>> DEFAULT [] PERMISSIONS FULL;
+DEFINE FIELD timezone ON global_settings TYPE string DEFAULT "Europe/Dublin" PERMISSIONS FULL;
 DEFINE FIELD user ON global_settings TYPE record<user> ASSERT $value != NONE AND $value != NULL AND fn::exists(<string> $value) PERMISSIONS FULL;
 
 DEFINE INDEX unique_for_user ON global_settings FIELDS user UNIQUE;
@@ -183,6 +184,7 @@ DEFINE FIELD time ON binding TYPE object DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON binding TYPE datetime DEFAULT time::now() VALUE $value OR $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON binding TYPE datetime DEFAULT time::now() VALUE $value OR time::now() PERMISSIONS FULL;
 
+-- functions
 
 DEFINE FUNCTION OVERWRITE fn::trend($card_group: record) {
 
