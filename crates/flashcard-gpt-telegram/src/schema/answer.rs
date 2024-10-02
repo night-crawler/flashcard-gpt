@@ -2,13 +2,13 @@ use crate::chat_manager::ChatManager;
 use crate::command::{AnswerCommand, RootCommand};
 use crate::ext::card::ExtractValueExt;
 use crate::state::State;
-use anyhow::Result;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Update};
 use tracing::info;
 
-pub fn answering_schema() -> Handler<'static, DependencyMap, Result<()>, DpHandlerDescription> {
+pub fn answering_schema(
+) -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let answering_command_handler = teloxide::filter_command::<AnswerCommand, _>().branch(
         case![State::Answering(fields)]
             .branch(case![AnswerCommand::Article].endpoint(handle_show_article))
@@ -24,7 +24,7 @@ pub fn answering_schema() -> Handler<'static, DependencyMap, Result<()>, DpHandl
     answering_message_handler
 }
 
-pub async fn handle_show_article(manager: ChatManager) -> Result<()> {
+pub async fn handle_show_article(manager: ChatManager) -> anyhow::Result<()> {
     info!("handle_article");
     let fields = manager.get_state().await?.into_fields();
 
@@ -47,18 +47,17 @@ pub async fn handle_show_article(manager: ChatManager) -> Result<()> {
     Ok(())
 }
 
-pub async fn handle_commit_answer(manager: ChatManager, difficulty: u8) -> Result<()> {
+pub async fn handle_commit_answer(manager: ChatManager, difficulty: u8) -> anyhow::Result<()> {
     manager.commit_answer(difficulty).await?;
     manager.set_menu_state::<RootCommand>().await?;
     Ok(())
 }
 
-pub async fn handle_skip_answer(manager: ChatManager) -> Result<()> {
-    info!(?manager, "Skipping");
-    handle_show_next_card(manager).await
+pub async fn handle_skip_answer(manager: ChatManager) -> anyhow::Result<()> {
+    manager.set_menu_state::<RootCommand>().await
 }
 
-pub async fn handle_show_next_card(manager: ChatManager) -> Result<()> {
+pub async fn handle_show_next_card(manager: ChatManager) -> anyhow::Result<()> {
     let mut fields = manager.get_state().await?.into_fields();
     let Some(Some(seq)) = fields.deck_card_group_card_seq_mut() else {
         manager
@@ -95,13 +94,12 @@ pub async fn handle_show_next_card(manager: ChatManager) -> Result<()> {
     Ok(())
 }
 
-pub async fn handle_cancel_answer(manager: ChatManager) -> Result<()> {
+pub async fn handle_cancel_answer(manager: ChatManager) -> anyhow::Result<()> {
     manager.set_menu_state::<RootCommand>().await?;
     Ok(())
 }
 
-// Handler for unexpected messages during answering
-async fn handle_answering_message(manager: ChatManager) -> Result<()> {
+async fn handle_answering_message(manager: ChatManager) -> anyhow::Result<()> {
     info!(?manager, "Answering message");
     Ok(())
 }
