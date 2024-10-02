@@ -34,7 +34,7 @@ delegate = "0.13"
 delegate-attr = "0.3"
 #enum-extract-macro = "0.1"
 #enum-extract-error = "0.1"
-#enum-fields = "0.1"
+enum-fields = { git = "https://github.com/night-crawler/enum-fields", version = "*" }
 markdown = { workspace = true }
 
 regex = "1"
@@ -44,7 +44,9 @@ chrono = { workspace = true }
 chrono-tz = { workspace = true }
 
 rand = "0.9.0-alpha.2"
-bon = { workspace = true}
+bon = { workspace = true }
+
+dumb_html_splitter = { git = "https://github.com/night-crawler/dumb_html_splitter", version = "*" }
 
 [dependencies.uuid]
 version = "1.10.0"

@@ -45,8 +45,8 @@ impl HistoryRepo {
                 deck_card_group: $dto.deck_card_group,
                 difficulty: $dto.difficulty,
                 time: {{
-                    created_at: <datetime> $dto.time.created_at,
-                    updated_at: <datetime> $dto.time.updated_at
+                    created_at: <datetime> ($dto.time.created_at or time::now()),
+                    updated_at: <datetime> ($dto.time.updated_at or time::now()),
                 }}
             }})[0].id;
             

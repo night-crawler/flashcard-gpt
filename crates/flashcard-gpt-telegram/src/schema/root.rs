@@ -1,8 +1,9 @@
 use crate::chat_manager::ChatManager;
 use crate::command::{
-    AnsweringCommand, CardCommand, CardGroupCommand, CommandExt, DeckCommand, RootCommand,
-    TagCommand, UserCommand,
+    AnswerCommand, CardCommand, CardGroupCommand, CommandExt, DeckCommand, RootCommand, TagCommand,
+    UserCommand,
 };
+use crate::schema::answer::{handle_cancel_answer, handle_commit_answer, handle_show_article, handle_show_next_card, handle_skip_answer};
 use crate::schema::deck::handle_create_deck;
 use crate::state::{FlashGptDialogue, State, StateFields};
 use anyhow::bail;
@@ -16,7 +17,7 @@ use teloxide::types::{
 };
 use teloxide::utils::command::BotCommands;
 use teloxide::Bot;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 pub fn root_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let root_command_handler = teloxide::filter_command::<RootCommand, _>()
@@ -144,7 +145,7 @@ pub(super) async fn receive_root_menu_item(
             }
         }
         (Some(State::ReceiveDeckTags(mut fields)), tag) => {
-            if let StateFields::Deck { tags, .. } = &mut fields {
+            if let Some(tags) = fields.tags_mut() {
                 tags.insert(tag.into());
             } else {
                 bail!("Invalid state: {:?}", fields);
@@ -154,7 +155,7 @@ pub(super) async fn receive_root_menu_item(
         }
 
         (Some(State::ReceiveCardTags(mut fields)), tag) => {
-            if let StateFields::Card { tags, .. } = &mut fields {
+            if let Some(tags) = fields.tags_mut() {
                 tags.insert(tag.into());
             } else {
                 bail!("Invalid state: {:?}", fields);
@@ -164,7 +165,7 @@ pub(super) async fn receive_root_menu_item(
         }
 
         (Some(State::ReceiveDeckParent(mut fields)), next_parent) => {
-            if let StateFields::Deck { parent, .. } = &mut fields {
+            if let Some(parent) = fields.parent_mut() {
                 parent.replace(next_parent.into());
             } else {
                 bail!("Invalid state: {:?}", fields);
@@ -176,7 +177,7 @@ pub(super) async fn receive_root_menu_item(
         }
 
         (Some(State::ReceiveCardDeck(mut fields)), next_deck) => {
-            if let StateFields::Card { deck, .. } = &mut fields {
+            if let Some(deck) = fields.deck_mut() {
                 deck.replace(next_deck.into());
             } else {
                 bail!("Invalid state: {:?}", fields);
@@ -187,7 +188,7 @@ pub(super) async fn receive_root_menu_item(
             manager.send_state_and_prompt().await?;
         }
         (Some(State::ReceiveGenerateCardDeck(mut fields)), next_deck) => {
-            if let StateFields::GenerateCard { deck, .. } = &mut fields {
+            if let Some(deck) = fields.deck_mut() {
                 deck.replace(next_deck.into());
             } else {
                 bail!("Invalid state: {:?}", fields);
@@ -197,9 +198,16 @@ pub(super) async fn receive_root_menu_item(
                 .await?;
             manager.send_state_and_prompt().await?;
         }
-        (Some(State::Answering(mut fields)), item)
-            if let Ok(cmd) = AnsweringCommand::from_str(item) => {
-            warn!(?cmd, "Handle me");
+        (Some(State::Answering(_)), item) if let Ok(cmd) = AnswerCommand::from_str(item) => {
+            match cmd {
+                AnswerCommand::Article => handle_show_article(manager).await?,
+                AnswerCommand::Next => handle_show_next_card(manager).await?,
+                AnswerCommand::Cancel => handle_cancel_answer(manager).await?,
+                AnswerCommand::Skip => handle_skip_answer(manager).await?,
+            }
+        }
+        (Some(State::Answering(_)), item) if let Ok(difficulty) = item.parse::<u8>() => {
+            handle_commit_answer(manager, difficulty).await?;
         }
         (_, _) => {}
     }

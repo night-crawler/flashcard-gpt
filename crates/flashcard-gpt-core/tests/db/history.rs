@@ -10,6 +10,8 @@ use testresult::TestResult;
 
 #[tokio::test]
 async fn test_create() -> TestResult {
+    let time = chrono::DateTime::parse_from_rfc3339("2021-08-01T00:00:00Z")?;
+    
     let deck_repo = create_deck_repo().await?;
     let repo = create_history_repo().await?;
     let user = create_user("history_create").await?;
@@ -50,9 +52,21 @@ async fn test_create() -> TestResult {
             deck_card: Some(deck_card.id.clone()),
             deck_card_group: None,
             difficulty: 3,
+            time: None,
+        })
+        .await?;
+    assert_ne!(history.time.created_at, time);
+    assert_ne!(history.time.updated_at, time);
+
+    let history = repo
+        .create_custom(CreateHistoryDto {
+            user: user.id.clone(),
+            deck_card: Some(deck_card.id.clone()),
+            deck_card_group: None,
+            difficulty: 3,
             time: Some(Time {
-                created_at: chrono::DateTime::parse_from_rfc3339("2021-08-01T00:00:00Z")?.to_utc(),
-                updated_at: chrono::DateTime::parse_from_rfc3339("2021-08-01T00:00:00Z")?.to_utc(),
+                created_at: time.to_utc(),
+                updated_at: time.to_utc(),
             }),
         })
         .await?;
@@ -62,11 +76,11 @@ async fn test_create() -> TestResult {
     assert!(history.deck_card_group.is_none());
     assert_eq!(
         history.time.created_at,
-        chrono::DateTime::parse_from_rfc3339("2021-08-01T00:00:00Z")?.to_utc()
+        time.to_utc()
     );
     assert_eq!(
         history.time.updated_at,
-        chrono::DateTime::parse_from_rfc3339("2021-08-01T00:00:00Z")?.to_utc()
+        time.to_utc()
     );
 
     let card_group = create_card_group()

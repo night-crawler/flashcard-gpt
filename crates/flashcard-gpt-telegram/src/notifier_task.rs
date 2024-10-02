@@ -12,7 +12,7 @@ use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::Bot;
 use tokio::time::sleep;
 use tracing::{debug, Span};
-use crate::command::AnsweringCommand;
+use crate::command::AnswerCommand;
 
 pub async fn init_notifier(
     bot: DefaultParseMode<Bot>,
@@ -94,10 +94,11 @@ pub async fn init_notifier(
                 manager.send_card(dc.card.as_ref()).await?
             }
 
-            manager.send_menu::<AnsweringCommand>().await?;
-            manager.set_my_commands::<AnsweringCommand>().await?;
+            manager.send_answer_menu().await?;
+            manager.set_my_commands::<AnswerCommand>().await?;
+            
         }
 
-        sleep(Duration::from_secs(1)).await;
+        sleep(Duration::from_secs(10)).await;
     }
 }

@@ -1,4 +1,3 @@
-use bon::Builder;
 use crate::ext::rendering::{DisplayJoinOrDash, OptionDisplayExt};
 use crate::message_render::RenderMessageTextHelper;
 use flashcard_gpt_core::reexports::db::sql::Thing;
@@ -108,11 +107,11 @@ impl State {
     pub fn is_interruptible(&self) -> bool {
         match self {
             State::InsideRootMenu(_) => true,
-            State::InsideUserMenu(_) => true,
-            State::InsideDeckMenu(_) => true,
-            State::InsideCardMenu(_) => true,
-            State::InsideCardGroupMenu(_) => true,
-            State::InsideTagMenu(_) => true,
+            State::InsideUserMenu(_) => false,
+            State::InsideDeckMenu(_) => false,
+            State::InsideCardMenu(_) => false,
+            State::InsideCardGroupMenu(_) => false,
+            State::InsideTagMenu(_) => false,
             State::ReceiveDeckTitle(_) => false,
             State::ReceiveDeckTags(_) => false,
             State::ReceiveDeckDescription(_) => false,
@@ -135,7 +134,7 @@ impl State {
         }
     }
 }
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, enum_fields::EnumFields)]
 pub enum StateFields {
     #[default]
     Empty,

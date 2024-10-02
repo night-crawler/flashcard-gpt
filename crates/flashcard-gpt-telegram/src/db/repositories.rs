@@ -16,6 +16,7 @@ use flashcard_gpt_core::repo::tag::TagRepo;
 use flashcard_gpt_core::repo::user::UserRepo;
 use teloxide::types::InlineKeyboardMarkup;
 use tracing::{error, Span};
+use flashcard_gpt_core::repo::history::HistoryRepo;
 
 #[derive(Debug, Clone)]
 pub struct Repositories {
@@ -26,6 +27,7 @@ pub struct Repositories {
     pub card_groups: CardGroupRepo,
     pub bindings: BindingRepo,
     pub global_settings: GlobalSettingsRepo,
+    pub history: HistoryRepo,
 }
 
 impl Repositories {
@@ -37,7 +39,8 @@ impl Repositories {
             cards: CardRepo::new_card(db.clone(), span.clone(), true),
             card_groups: CardGroupRepo::new_card_group(db.clone(), span.clone(), true),
             bindings: BindingRepo::new_binding(db.clone(), span.clone(), true),
-            global_settings: GlobalSettingsRepo::new_global_settings(db, span, true),
+            global_settings: GlobalSettingsRepo::new_global_settings(db.clone(), span.clone(), true),
+            history: HistoryRepo::new_history(db, span, true),
         }
     }
 

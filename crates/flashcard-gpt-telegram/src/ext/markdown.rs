@@ -109,7 +109,7 @@ impl TgHtml for Node {
                 let alt = escape_html(&image_ref.alt);
                 format!("[{}]", alt)
             }
-            Node::BlockQuote(block_quote) => {
+            Node::Blockquote(block_quote) => {
                 let content = block_quote
                     .children
                     .iter()
