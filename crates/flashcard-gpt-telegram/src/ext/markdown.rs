@@ -123,7 +123,7 @@ impl TgHtml for Node {
                     .iter()
                     .map(|child| child.to_tg_html())
                     .collect::<String>();
-                format!("<b>{content}</b>")
+                format!("\n<b><i><u>{content}</u></i></b>\n")
             }
             Node::List(list) => {
                 let mut items = vec![];

@@ -6,6 +6,7 @@ use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Update};
 use tracing::info;
+use crate::schema::root::handle_show_generic_menu;
 
 pub fn answering_schema(
 ) -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
@@ -49,12 +50,13 @@ pub async fn handle_show_article(manager: ChatManager) -> anyhow::Result<()> {
 
 pub async fn handle_commit_answer(manager: ChatManager, difficulty: u8) -> anyhow::Result<()> {
     manager.commit_answer(difficulty).await?;
-    manager.set_menu_state::<RootCommand>().await?;
+    handle_show_generic_menu::<RootCommand>(manager).await?;
     Ok(())
 }
 
 pub async fn handle_skip_answer(manager: ChatManager) -> anyhow::Result<()> {
-    manager.set_menu_state::<RootCommand>().await
+    handle_show_generic_menu::<RootCommand>(manager).await?;
+    Ok(())
 }
 
 pub async fn handle_show_next_card(manager: ChatManager) -> anyhow::Result<()> {
@@ -95,7 +97,7 @@ pub async fn handle_show_next_card(manager: ChatManager) -> anyhow::Result<()> {
 }
 
 pub async fn handle_cancel_answer(manager: ChatManager) -> anyhow::Result<()> {
-    manager.set_menu_state::<RootCommand>().await?;
+    handle_show_generic_menu::<RootCommand>(manager).await?;
     Ok(())
 }
 

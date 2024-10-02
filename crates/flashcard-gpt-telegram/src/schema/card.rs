@@ -285,7 +285,7 @@ async fn create_card(manager: ChatManager) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn handle_generate_cards(manager: ChatManager) -> anyhow::Result<()> {
+pub async fn handle_generate_cards(manager: ChatManager) -> anyhow::Result<()> {
     manager
         .update_state(State::ReceiveGenerateCardDeck(StateFields::GenerateCard {
             deck: None,

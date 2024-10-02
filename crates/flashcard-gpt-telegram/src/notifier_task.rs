@@ -1,9 +1,10 @@
+use std::ops::Sub;
 use crate::chat_manager::ChatManager;
 use crate::db::repositories::Repositories;
 use crate::ext::binding::ChatIdExt;
 use crate::ext::markdown::MarkdownFormatter;
 use crate::state::{FlashGptDialogue, State, StateFields};
-use chrono::{Timelike, Utc};
+use chrono::{TimeDelta, Timelike, Utc};
 use std::sync::Arc;
 use std::time::Duration;
 use rand::Rng;
@@ -23,6 +24,7 @@ pub async fn init_notifier(
 ) -> anyhow::Result<()> {
     loop {
         let now = Utc::now();
+        let past_3h = now.sub(TimeDelta::hours(3));
         let bindings = repositories.bindings.list_all().await?;
         debug!(bindings = bindings.len(), "Bindings");
 
@@ -60,7 +62,7 @@ pub async fn init_notifier(
             if now.second() % 2 == 0 {
                 let mut dcgs = repositories
                     .decks
-                    .get_top_ranked_card_groups(user, now.to_utc())
+                    .get_top_ranked_card_groups(user, past_3h.to_utc())
                     .await?;
                 if dcgs.is_empty() {
                     continue;
@@ -78,7 +80,7 @@ pub async fn init_notifier(
             } else {
                 let mut dcs = repositories
                     .decks
-                    .get_top_ranked_cards(user, now.to_utc())
+                    .get_top_ranked_cards(user, past_3h.to_utc())
                     .await?;
                 if dcs.is_empty() {
                     continue;

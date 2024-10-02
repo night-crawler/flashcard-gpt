@@ -283,3 +283,19 @@ DEFINE FUNCTION OVERWRITE fn::appears_in_card_groups_in_this_deck($pk: record, $
         limit 1
     )[0].count or 0;
 };
+
+DEFINE FUNCTION OVERWRITE fn::num_answers_for_deck($pk: record, $since: datetime) {
+    return count(
+        select
+            count(),
+            deck_card_group.in ?: deck_card.in as deck,
+            deck_card ?: deck_card_group as what
+        from history
+            where
+                time.created_at >= $since and (
+                    deck_card_group.in = $pk or
+                    deck_card.in = $pk
+                )
+        group by deck, what
+    )
+};

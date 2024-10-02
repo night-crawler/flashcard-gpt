@@ -3,8 +3,13 @@ use crate::command::{
     AnswerCommand, CardCommand, CardGroupCommand, CommandExt, DeckCommand, RootCommand, TagCommand,
     UserCommand,
 };
-use crate::schema::answer::{handle_cancel_answer, handle_commit_answer, handle_show_article, handle_show_next_card, handle_skip_answer};
+use crate::schema::answer::{
+    handle_cancel_answer, handle_commit_answer, handle_show_article, handle_show_next_card,
+    handle_skip_answer,
+};
+use crate::schema::card::{handle_create_card, handle_generate_cards};
 use crate::schema::deck::handle_create_deck;
+use crate::schema::receive_next;
 use crate::state::{FlashGptDialogue, State, StateFields};
 use anyhow::bail;
 use std::str::FromStr;
@@ -17,7 +22,7 @@ use teloxide::types::{
 };
 use teloxide::utils::command::BotCommands;
 use teloxide::Bot;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 pub fn root_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let root_command_handler = teloxide::filter_command::<RootCommand, _>()
@@ -48,21 +53,17 @@ async fn handle_root_help(manager: ChatManager) -> anyhow::Result<()> {
 pub async fn cancel(manager: ChatManager) -> anyhow::Result<()> {
     manager.send_message("Cancelling the dialogue.").await?;
     manager.dialogue.exit().await?;
-    manager
-        .update_state(State::InsideRootMenu(StateFields::Empty))
-        .await?;
+    handle_show_generic_menu::<RootCommand>(manager).await?;
     Ok(())
 }
 
 async fn handle_start(manager: ChatManager) -> anyhow::Result<()> {
     manager.delete_current_message().await?;
-    manager.send_menu::<RootCommand>().await?;
-    manager.set_my_commands::<RootCommand>().await?;
-    manager.set_menu_state::<RootCommand>().await?;
+    handle_show_generic_menu::<RootCommand>(manager).await?;
     Ok(())
 }
 
-async fn handle_show_generic_menu<T>(manager: ChatManager) -> anyhow::Result<()>
+pub async fn handle_show_generic_menu<T>(manager: ChatManager) -> anyhow::Result<()>
 where
     T: BotCommands + CommandExt,
 {
@@ -133,6 +134,20 @@ pub(super) async fn receive_root_menu_item(
                 }
             }
         }
+
+        (Some(State::InsideCardMenu(_)), item) if let Ok(cmd) = CardCommand::from_str(item) => {
+            match cmd {
+                CardCommand::List => {
+                    bot.send_message(dialogue.chat_id(), "Not implemented yet")
+                        .await?;
+                }
+                CardCommand::Create => handle_create_card(manager).await?,
+                CardCommand::Generate => handle_generate_cards(manager).await?,
+                CardCommand::Next => receive_next(manager).await?,
+                CardCommand::Cancel => cancel(manager).await?,
+            }
+        }
+
         (Some(State::InsideDeckMenu(_)), item) if let Ok(cmd) = DeckCommand::from_str(item) => {
             match cmd {
                 DeckCommand::Create => {
@@ -209,7 +224,9 @@ pub(super) async fn receive_root_menu_item(
         (Some(State::Answering(_)), item) if let Ok(difficulty) = item.parse::<u8>() => {
             handle_commit_answer(manager, difficulty).await?;
         }
-        (_, _) => {}
+        (state, item) => {
+            warn!(?state, %item, "No handler for");
+        }
     }
 
     Ok(())
