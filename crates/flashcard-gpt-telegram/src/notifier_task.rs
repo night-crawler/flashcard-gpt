@@ -1,23 +1,25 @@
-use std::ops::Sub;
 use crate::chat_manager::ChatManager;
+use crate::command::answer::AnswerCommand;
 use crate::db::repositories::Repositories;
 use crate::ext::binding::ChatIdExt;
 use crate::ext::markdown::MarkdownFormatter;
+use crate::state::bot_state::{BotState, FlashGptDialogue};
+use crate::state::state_fields::StateFields;
 use chrono::{TimeDelta, Timelike, Utc};
+use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
+use rand::Rng;
+use std::ops::Sub;
 use std::sync::Arc;
 use std::time::Duration;
-use rand::Rng;
 use teloxide::adaptors::DefaultParseMode;
 use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::Bot;
 use tokio::time::sleep;
 use tracing::{debug, Span};
-use crate::command::answer::AnswerCommand;
-use crate::state::bot_state::{BotState, FlashGptDialogue};
-use crate::state::state_fields::StateFields;
 
 pub async fn init_notifier(
     bot: DefaultParseMode<Bot>,
+    generator: CardGeneratorService,
     storage: Arc<InMemStorage<BotState>>,
     formatter: MarkdownFormatter,
     repositories: Repositories,
@@ -30,6 +32,7 @@ pub async fn init_notifier(
         debug!(bindings = bindings.len(), "Bindings");
 
         for binding in bindings {
+            let generator = generator.clone();
             let binding = Arc::new(binding);
             let user = binding.user.as_ref();
             let global_settings = repositories.get_global_settings_or_default(user).await?;
@@ -46,6 +49,7 @@ pub async fn init_notifier(
 
             let manager = ChatManager {
                 repositories: repositories.clone(),
+                generator,
                 formatter: formatter.clone(),
                 binding: binding.clone(),
                 bot: bot.clone(),
@@ -70,12 +74,14 @@ pub async fn init_notifier(
                 }
                 let card_id = rand::thread_rng().gen_range(0..dcgs.len());
                 let dcg = dcgs.swap_remove(card_id);
-                manager.update_state(BotState::Answering(StateFields::Answer {
-                    deck_card_group_id: Some(dcg.id),
-                    deck_card_group_card_seq: Some(0),
-                    deck_card_id: None,
-                    difficulty: None,
-                })).await?;
+                manager
+                    .update_state(BotState::Answering(StateFields::Answer {
+                        deck_card_group_id: Some(dcg.id),
+                        deck_card_group_card_seq: Some(0),
+                        deck_card_id: None,
+                        difficulty: None,
+                    }))
+                    .await?;
                 manager.send_card_group(dcg.card_group.as_ref()).await?;
                 manager.send_card(dcg.card_group.cards[0].as_ref()).await?;
             } else {
@@ -88,18 +94,19 @@ pub async fn init_notifier(
                 }
                 let id = rand::thread_rng().gen_range(0..dcs.len());
                 let dc = dcs.swap_remove(id);
-                manager.update_state(BotState::Answering(StateFields::Answer {
-                    deck_card_group_id: None,
-                    deck_card_group_card_seq: None,
-                    deck_card_id: Some(dc.id),
-                    difficulty: None,
-                })).await?;
+                manager
+                    .update_state(BotState::Answering(StateFields::Answer {
+                        deck_card_group_id: None,
+                        deck_card_group_card_seq: None,
+                        deck_card_id: Some(dc.id),
+                        difficulty: None,
+                    }))
+                    .await?;
                 manager.send_card(dc.card.as_ref()).await?
             }
 
             manager.send_answer_menu().await?;
             manager.set_my_commands::<AnswerCommand>().await?;
-            
         }
 
         sleep(Duration::from_secs(10)).await;

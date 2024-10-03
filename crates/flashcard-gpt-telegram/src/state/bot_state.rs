@@ -1,4 +1,5 @@
 use crate::message_render::RenderMessageTextHelper;
+use crate::state::state_description::StateDescription;
 use crate::state::state_fields::StateFields;
 use paste::paste;
 use std::sync::Arc;
@@ -7,7 +8,6 @@ use strum_macros::{AsRefStr, EnumProperty};
 use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::prelude::Dialogue;
 use teloxide::types::Message;
-use crate::state::state_description::StateDescription;
 
 pub type FlashGptDialogue = Dialogue<BotState, InMemStorage<BotState>>;
 

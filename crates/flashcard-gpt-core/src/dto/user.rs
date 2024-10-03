@@ -1,7 +1,7 @@
-use std::fmt::{Display, Formatter};
 use crate::dto::time::Time;
 use bon::Builder;
 use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 use surrealdb::sql::Thing;
 

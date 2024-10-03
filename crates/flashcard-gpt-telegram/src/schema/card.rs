@@ -1,13 +1,15 @@
 use crate::chat_manager::ChatManager;
+use crate::command::card::CardCommand;
 use crate::ext::StrExt;
 use crate::patch_state;
 use crate::schema::receive_next;
 use crate::schema::root::{cancel, handle_show_generic_menu};
+use crate::state::bot_state::BotState;
+use crate::state::state_fields::StateFields;
 use anyhow::anyhow;
 use flashcard_gpt_core::dto::card::CreateCardDto;
 use flashcard_gpt_core::dto::deck_card::CreateDeckCardDto;
 use flashcard_gpt_core::dto::llm::GptCardGroup;
-use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
 use serde_json::Value;
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -15,9 +17,6 @@ use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Update};
 use tracing::{error, info};
-use crate::command::card::CardCommand;
-use crate::state::bot_state::BotState;
-use crate::state::state_fields::StateFields;
 
 pub fn card_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let card_command_handler = teloxide::filter_command::<CardCommand, _>().branch(
@@ -60,7 +59,9 @@ pub fn card_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
                     .branch(case![CardCommand::Next].endpoint(create_card)),
             ),
         )
-        .branch(case![BotState::ReceiveGenerateCardPrompt(fields)].endpoint(receive_generator_prompt))
+        .branch(
+            case![BotState::ReceiveGenerateCardPrompt(fields)].endpoint(receive_generator_prompt),
+        )
         .branch(
             case![BotState::ReceiveGenerateCardConfirm(fields)].branch(
                 teloxide::filter_command::<CardCommand, _>()
@@ -114,7 +115,9 @@ async fn receive_card_front(manager: ChatManager) -> anyhow::Result<()> {
         StateFields::Card { front },
         |front: &mut Option<Arc<str>>| { front.replace(next_front) }
     );
-    manager.update_state(BotState::ReceiveCardBack(fields)).await?;
+    manager
+        .update_state(BotState::ReceiveCardBack(fields))
+        .await?;
     manager.send_state_and_prompt().await?;
     Ok(())
 }
@@ -190,7 +193,9 @@ async fn receive_card_importance(manager: ChatManager) -> anyhow::Result<()> {
         |importance: &mut Option<u8>| { importance.replace(next_importance) }
     );
 
-    manager.update_state(BotState::ReceiveCardTags(fields)).await?;
+    manager
+        .update_state(BotState::ReceiveCardTags(fields))
+        .await?;
     manager.send_tag_menu().await?;
     Ok(())
 }
@@ -206,7 +211,9 @@ async fn receive_card_tags(manager: ChatManager) -> anyhow::Result<()> {
         StateFields::Card { tags },
         |tags: &mut BTreeSet<Arc<str>>| { tags.extend(next_tags) }
     );
-    manager.update_state(BotState::ReceiveCardTags(fields)).await?;
+    manager
+        .update_state(BotState::ReceiveCardTags(fields))
+        .await?;
     manager.send_tag_menu().await?;
 
     Ok(())
@@ -288,10 +295,12 @@ async fn create_card(manager: ChatManager) -> anyhow::Result<()> {
 
 pub async fn handle_generate_cards(manager: ChatManager) -> anyhow::Result<()> {
     manager
-        .update_state(BotState::ReceiveGenerateCardDeck(StateFields::GenerateCard {
-            deck: None,
-            prompt: None,
-        }))
+        .update_state(BotState::ReceiveGenerateCardDeck(
+            StateFields::GenerateCard {
+                deck: None,
+                prompt: None,
+            },
+        ))
         .await?;
     manager.send_deck_menu().await?;
     Ok(())
@@ -320,10 +329,8 @@ async fn receive_generator_prompt(manager: ChatManager) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn generate_cards(
-    manager: ChatManager,
-    generator: CardGeneratorService,
-) -> anyhow::Result<()> {
+#[tracing::instrument(level = "debug", skip_all, parent = manager.span.clone(), err)]
+pub async fn generate_cards(manager: ChatManager) -> anyhow::Result<()> {
     let StateFields::GenerateCard {
         deck: Some(deck),
         prompt: Some(prompt),
@@ -335,7 +342,10 @@ async fn generate_cards(
 
     let user = manager.binding.user.clone();
 
-    let (code_cards, params) = generator.generate_code_cards(prompt.as_ref()).await?;
+    let (code_cards, params) = manager
+        .generator
+        .generate_code_cards(prompt.as_ref())
+        .await?;
     let mut gpt_card_group = GptCardGroup::from_gpt_response(&code_cards)?;
 
     if let Some(data) = gpt_card_group.data.as_mut()
@@ -353,7 +363,8 @@ async fn generate_cards(
         }
     }
 
-    let deck_card_group = generator
+    let deck_card_group = manager
+        .generator
         .create_cards(user.as_ref(), deck.as_thing()?, gpt_card_group)
         .await?;
 

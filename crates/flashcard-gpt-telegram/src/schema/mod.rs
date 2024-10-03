@@ -2,10 +2,13 @@ use crate::chat_manager::ChatManager;
 use crate::db::repositories::Repositories;
 use crate::ext::binding::BindingEntity;
 use crate::ext::markdown::MarkdownFormatter;
+use crate::schema::answer::answering_schema;
 use crate::schema::card::card_schema;
 use crate::schema::deck::deck_schema;
 use crate::schema::root::{receive_inline_query, receive_root_menu_item, root_schema};
+use crate::state::bot_state::{BotState, FlashGptDialogue};
 use flashcard_gpt_core::dto::binding::BindingDto;
+use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
 use std::sync::Arc;
 use teloxide::adaptors::DefaultParseMode;
 use teloxide::dispatching::dialogue::InMemStorage;
@@ -14,13 +17,11 @@ use teloxide::prelude::Update;
 use teloxide::types::UpdateKind;
 use teloxide::{dptree, Bot};
 use tracing::{debug, warn, Span};
-use crate::schema::answer::answering_schema;
-use crate::state::bot_state::{BotState, FlashGptDialogue};
 
+mod answer;
 mod card;
 mod deck;
 mod root;
-mod answer;
 
 pub fn schema() -> UpdateHandler<anyhow::Error> {
     let root_menu_handler = Update::filter_callback_query().endpoint(receive_root_menu_item);
@@ -45,6 +46,7 @@ pub fn schema() -> UpdateHandler<anyhow::Error> {
 
 fn init_chat_manager(
     update: Update,
+    generator: CardGeneratorService,
     repositories: Repositories,
     binding: Arc<BindingDto>,
     bot: DefaultParseMode<Bot>,
@@ -65,6 +67,7 @@ fn init_chat_manager(
         message,
         span,
         formatter: markdown_formatter,
+        generator,
     }
 }
 

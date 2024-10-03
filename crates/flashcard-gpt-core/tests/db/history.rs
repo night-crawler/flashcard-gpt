@@ -12,7 +12,7 @@ use testresult::TestResult;
 #[tokio::test]
 async fn test_create() -> TestResult {
     let time = chrono::DateTime::parse_from_rfc3339("2021-08-01T00:00:00Z")?;
-    
+
     let deck_repo = create_deck_repo().await?;
     let repo = create_history_repo().await?;
     let user = create_user("history_create").await?;
@@ -78,14 +78,8 @@ async fn test_create() -> TestResult {
     assert_eq!(history.difficulty, 3);
     assert!(history.deck_card.is_some());
     assert!(history.deck_card_group.is_none());
-    assert_eq!(
-        history.time.created_at,
-        time.to_utc()
-    );
-    assert_eq!(
-        history.time.updated_at,
-        time.to_utc()
-    );
+    assert_eq!(history.time.created_at, time.to_utc());
+    assert_eq!(history.time.updated_at, time.to_utc());
 
     let card_group = create_card_group()
         .user(user.id.clone())

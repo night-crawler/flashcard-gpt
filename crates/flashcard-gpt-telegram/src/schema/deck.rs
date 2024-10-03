@@ -4,7 +4,10 @@ use crate::ext::StrExt;
 use crate::schema::receive_next;
 use crate::schema::root::cancel;
 
-use crate::{patch_state};
+use crate::command::deck::DeckCommand;
+use crate::patch_state;
+use crate::state::bot_state::{BotState, FlashGptDialogue};
+use crate::state::state_fields::StateFields;
 use anyhow::anyhow;
 use flashcard_gpt_core::dto::deck::{CreateDeckDto, DeckSettings};
 use std::collections::BTreeSet;
@@ -12,9 +15,6 @@ use std::sync::Arc;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Message, Update};
-use crate::command::deck::DeckCommand;
-use crate::state::bot_state::{BotState, FlashGptDialogue};
-use crate::state::state_fields::StateFields;
 
 pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let deck_command_handler = teloxide::filter_command::<DeckCommand, _>().branch(
@@ -91,7 +91,9 @@ async fn receive_deck_title(manager: ChatManager, msg: Message) -> anyhow::Resul
         }
     );
 
-    manager.update_state(BotState::ReceiveDeckTags(fields)).await?;
+    manager
+        .update_state(BotState::ReceiveDeckTags(fields))
+        .await?;
     manager.send_tag_menu().await?;
 
     Ok(())
@@ -108,7 +110,9 @@ async fn receive_deck_tags(manager: ChatManager) -> anyhow::Result<()> {
         StateFields::Deck { tags },
         |tags: &mut BTreeSet<Arc<str>>| { tags.extend(new_tags) }
     );
-    manager.update_state(BotState::ReceiveDeckTags(fields)).await?;
+    manager
+        .update_state(BotState::ReceiveDeckTags(fields))
+        .await?;
     manager.send_tag_menu().await?;
     Ok(())
 }

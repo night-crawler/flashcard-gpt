@@ -1,11 +1,10 @@
+use crate::command::ext::CommandExt;
 use crate::state::bot_state::BotState;
 use crate::state::state_fields::StateFields;
 use strum::IntoEnumIterator;
 use strum_macros::{AsRefStr, EnumIter, EnumString};
 use teloxide::macros::BotCommands;
 use teloxide::types::InlineKeyboardButton;
-use crate::command::ext::CommandExt;
-
 
 #[derive(BotCommands, Clone, AsRefStr, EnumIter, EnumString)]
 #[command(rename_rule = "lowercase")]
@@ -13,7 +12,6 @@ pub enum CardGroupCommand {
     /// Show all card groups
     List,
 }
-
 
 impl CommandExt for CardGroupCommand {
     fn get_menu_items() -> impl Iterator<Item = InlineKeyboardButton> {

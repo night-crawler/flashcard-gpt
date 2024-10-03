@@ -1,6 +1,6 @@
-use chrono_tz::Tz;
 use crate::ext::binding::{BindingEntity, BindingExt};
 use crate::ext::menu_repr::IteratorMenuReprExt;
+use chrono_tz::Tz;
 use flashcard_gpt_core::dto::binding::BindingDto;
 use flashcard_gpt_core::dto::global_settings::{CreateGlobalSettingsDto, GlobalSettingsDto};
 use flashcard_gpt_core::error::CoreError;
@@ -12,11 +12,11 @@ use flashcard_gpt_core::repo::card::CardRepo;
 use flashcard_gpt_core::repo::card_group::CardGroupRepo;
 use flashcard_gpt_core::repo::deck::DeckRepo;
 use flashcard_gpt_core::repo::global_settings::GlobalSettingsRepo;
+use flashcard_gpt_core::repo::history::HistoryRepo;
 use flashcard_gpt_core::repo::tag::TagRepo;
 use flashcard_gpt_core::repo::user::UserRepo;
 use teloxide::types::InlineKeyboardMarkup;
 use tracing::{error, Span};
-use flashcard_gpt_core::repo::history::HistoryRepo;
 
 #[derive(Debug, Clone)]
 pub struct Repositories {
@@ -39,7 +39,11 @@ impl Repositories {
             cards: CardRepo::new_card(db.clone(), span.clone(), true),
             card_groups: CardGroupRepo::new_card_group(db.clone(), span.clone(), true),
             bindings: BindingRepo::new_binding(db.clone(), span.clone(), true),
-            global_settings: GlobalSettingsRepo::new_global_settings(db.clone(), span.clone(), true),
+            global_settings: GlobalSettingsRepo::new_global_settings(
+                db.clone(),
+                span.clone(),
+                true,
+            ),
             history: HistoryRepo::new_history(db, span, true),
         }
     }
@@ -90,12 +94,12 @@ impl Repositories {
                             // [chrono::Duration::hours(13), chrono::Duration::hours(14)],
                             // [chrono::Duration::hours(17), chrono::Duration::hours(18)],
                         ],
-                        timezone: Tz::Europe__Dublin
+                        timezone: Tz::Europe__Dublin,
                     })
                     .await?
             }
         };
-        
+
         Ok(global_settings)
     }
 }

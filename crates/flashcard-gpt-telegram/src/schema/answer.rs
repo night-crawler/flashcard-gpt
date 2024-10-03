@@ -1,13 +1,13 @@
 use crate::chat_manager::ChatManager;
+use crate::command::answer::AnswerCommand;
+use crate::command::root::RootCommand;
 use crate::ext::card::ExtractValueExt;
+use crate::schema::root::handle_show_generic_menu;
+use crate::state::bot_state::BotState;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Update};
 use tracing::info;
-use crate::command::answer::AnswerCommand;
-use crate::command::root::RootCommand;
-use crate::schema::root::handle_show_generic_menu;
-use crate::state::bot_state::BotState;
 
 pub fn answering_schema(
 ) -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {

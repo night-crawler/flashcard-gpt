@@ -1,12 +1,12 @@
+use super::{from_raw_duration_option, to_raw_duration_option};
 use crate::dto::deck_card::DeckCardDto;
 use crate::dto::deck_card_group::DeckCardGroupDto;
 use crate::dto::time::Time;
 use crate::reexports::db::sql::Thing;
 use bon::Builder;
+use chrono::Duration;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use chrono::Duration;
-use super::{from_raw_duration_option, to_raw_duration_option};
 
 #[derive(Debug, Serialize, Deserialize, Builder)]
 pub struct HistoryDto {

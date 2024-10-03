@@ -1,13 +1,19 @@
+use crate::command::answer::AnswerCommand;
+use crate::command::ext::CommandExt;
 use crate::db::repositories::Repositories;
 use crate::ext::card::ExtractValueExt;
 use crate::ext::markdown::MarkdownFormatter;
 use crate::ext::menu_repr::IteratorMenuReprExt;
 use crate::message_render::RenderMessageTextHelper;
+use crate::state::bot_state::{BotState, FlashGptDialogue};
+use crate::state::state_description::StateDescription;
 use anyhow::bail;
 use flashcard_gpt_core::dto::binding::BindingDto;
 use flashcard_gpt_core::dto::card::CardDto;
 use flashcard_gpt_core::dto::card_group::CardGroupDto;
+use flashcard_gpt_core::dto::history::CreateHistoryDto;
 use flashcard_gpt_core::dto::tag::TagDto;
+use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
 use itertools::Itertools;
 use std::fmt::Debug;
 use std::str::pattern::Pattern;
@@ -20,11 +26,6 @@ use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::utils::command::BotCommands;
 use teloxide::Bot;
 use tracing::{warn, Span};
-use flashcard_gpt_core::dto::history::CreateHistoryDto;
-use crate::command::answer::AnswerCommand;
-use crate::command::ext::CommandExt;
-use crate::state::bot_state::{BotState, FlashGptDialogue};
-use crate::state::state_description::StateDescription;
 
 static DIGITS: [&str; 11] = [
     "0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟",
@@ -33,6 +34,7 @@ static DIGITS: [&str; 11] = [
 #[derive(Debug, Clone)]
 pub struct ChatManager {
     pub repositories: Repositories,
+    pub generator: CardGeneratorService,
     pub formatter: MarkdownFormatter,
     pub binding: Arc<BindingDto>,
     pub bot: DefaultParseMode<Bot>,
@@ -374,33 +376,39 @@ impl ChatManager {
 
         bail!("Failed to split text {text}")
     }
-    
+
     pub async fn commit_answer(&self, difficulty: u8) -> anyhow::Result<()> {
         let fields = self.get_state().await?.into_fields();
         if let Some(Some(dcg_id)) = fields.deck_card_group_id() {
-            self.repositories.history.create_custom(CreateHistoryDto {
-                user: self.binding.user.id.clone(),
-                deck_card: None,
-                deck_card_group: dcg_id.clone().into(),
-                difficulty,
-                time: None,
-                hide_for: None,
-            }).await?;
+            self.repositories
+                .history
+                .create_custom(CreateHistoryDto {
+                    user: self.binding.user.id.clone(),
+                    deck_card: None,
+                    deck_card_group: dcg_id.clone().into(),
+                    difficulty,
+                    time: None,
+                    hide_for: None,
+                })
+                .await?;
             return Ok(());
         }
 
         if let Some(Some(dc_id)) = fields.deck_card_id() {
-            self.repositories.history.create_custom(CreateHistoryDto {
-                user: self.binding.user.id.clone(),
-                deck_card: dc_id.clone().into(),
-                deck_card_group: None,
-                difficulty,
-                time: None,
-                hide_for: None,
-            }).await?;
+            self.repositories
+                .history
+                .create_custom(CreateHistoryDto {
+                    user: self.binding.user.id.clone(),
+                    deck_card: dc_id.clone().into(),
+                    deck_card_group: None,
+                    difficulty,
+                    time: None,
+                    hide_for: None,
+                })
+                .await?;
             return Ok(());
         }
-        
+
         bail!("No active deck card or deck card group in the state");
     }
 }

@@ -1,9 +1,9 @@
+use chrono::Duration;
+use humantime::{format_duration, parse_duration};
 use serde::de::{Error, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
 use std::marker::PhantomData;
-use chrono::Duration;
-use humantime::{format_duration, parse_duration};
 
 pub mod binding;
 pub mod card;
@@ -50,8 +50,9 @@ where
     deserializer.deserialize_seq(SkipNulls(PhantomData))
 }
 
-
-fn from_raw_durations<'de, D, const N: usize>(deserializer: D) -> Result<Vec<[Duration; N]>, D::Error>
+fn from_raw_durations<'de, D, const N: usize>(
+    deserializer: D,
+) -> Result<Vec<[Duration; N]>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -80,7 +81,10 @@ where
     Ok(result)
 }
 
-fn to_raw_durations<S, const N: usize>(value: &[[Duration; N]], serializer: S) -> Result<S::Ok, S::Error>
+fn to_raw_durations<S, const N: usize>(
+    value: &[[Duration; N]],
+    serializer: S,
+) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
@@ -100,7 +104,6 @@ where
     s.serialize(serializer)
 }
 
-
 #[allow(dead_code)]
 fn from_raw_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -109,12 +112,10 @@ where
     let dur_str: String = Deserialize::deserialize(deserializer)?;
     let duration = parse_duration(&dur_str)
         .map_err(|err| Error::custom(format_args!("failed to parse duration: {}", err)))?;
-    let duration = Duration::from_std(duration).map_err(|err| {
-        Error::custom(format_args!("failed to convert duration: {}", err))
-    })?;
+    let duration = Duration::from_std(duration)
+        .map_err(|err| Error::custom(format_args!("failed to convert duration: {}", err)))?;
     Ok(duration)
 }
-
 
 fn to_raw_duration<S>(value: &Duration, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -144,11 +145,10 @@ where
     let Some(dur_str) = dur_str else {
         return Ok(None);
     };
-    
+
     let duration = parse_duration(&dur_str)
         .map_err(|err| Error::custom(format_args!("failed to parse duration: {}", err)))?;
-    let duration = Duration::from_std(duration).map_err(|err| {
-        Error::custom(format_args!("failed to convert duration: {}", err))
-    })?;
+    let duration = Duration::from_std(duration)
+        .map_err(|err| Error::custom(format_args!("failed to convert duration: {}", err)))?;
     Ok(Some(duration))
 }

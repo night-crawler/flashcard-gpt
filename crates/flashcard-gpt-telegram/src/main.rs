@@ -20,8 +20,9 @@ use crate::db::repositories::Repositories;
 use crate::ext::markdown::MarkdownFormatter;
 use crate::notifier_task::init_notifier;
 use crate::schema::schema;
-use flashcard_gpt_core::llm::custom_executor::CustomExecutor;
+use crate::state::bot_state::BotState;
 use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
+use flashcard_gpt_core::llm::custom_executor::CustomExecutor;
 use flashcard_gpt_core::logging::init_tracing;
 use flashcard_gpt_core::reexports::db::engine::remote::ws::{Client, Ws};
 use flashcard_gpt_core::reexports::db::opt::auth::Root;
@@ -36,7 +37,6 @@ use teloxide::types::ParseMode;
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
 use tokio::task::JoinSet;
 use tracing::{info, span, warn, Level};
-use crate::state::bot_state::BotState;
 
 fn init_card_generator_service(
     repositories: &Repositories,
@@ -91,6 +91,7 @@ async fn main() -> anyhow::Result<()> {
 
     let notifier = init_notifier(
         bot.clone(),
+        card_generation_service.clone(),
         state.clone(),
         formatter.clone(),
         repositories.clone(),

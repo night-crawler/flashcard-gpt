@@ -10,6 +10,7 @@ use crate::repo::card_group::CardGroupRepo;
 use crate::repo::deck::DeckRepo;
 use crate::repo::tag::TagRepo;
 use std::collections::BTreeMap;
+use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -19,6 +20,12 @@ pub struct CardGeneratorService {
     pub card_groups: CardGroupRepo,
     pub decks: DeckRepo,
     pub tags: TagRepo,
+}
+
+impl Debug for CardGeneratorService {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "CardGeneratorService")
+    }
 }
 
 impl CardGeneratorService {

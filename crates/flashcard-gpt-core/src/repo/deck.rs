@@ -177,10 +177,7 @@ impl DeckRepo {
         single_object_query!(self.db, query, ("id", id.into()))
     }
 
-    pub async fn get_deck_card(
-        &self,
-        id: impl Into<Thing>,
-    ) -> Result<DeckCardDto, CoreError> {
+    pub async fn get_deck_card(&self, id: impl Into<Thing>) -> Result<DeckCardDto, CoreError> {
         let query = r#"
          select 
             *

@@ -41,7 +41,10 @@ impl GlobalSettingsDto {
 pub struct CreateGlobalSettingsDto {
     pub user: Thing,
     pub daily_limit: u16,
-    #[serde(deserialize_with = "from_raw_durations", serialize_with = "to_raw_durations")]
+    #[serde(
+        deserialize_with = "from_raw_durations",
+        serialize_with = "to_raw_durations"
+    )]
     pub timetable: Vec<[Duration; 2]>,
     pub timezone: Tz,
 }

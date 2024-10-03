@@ -1,15 +1,17 @@
-use std::ops::Add;
 use chrono::{Duration, TimeDelta};
 use chrono_tz::Tz;
 use flashcard_gpt_core::dto::global_settings::CreateGlobalSettingsDto;
 use flashcard_gpt_tests::db::utils::{create_global_settings_repo, create_user};
+use std::ops::Add;
 use testresult::TestResult;
 
 #[tokio::test]
 async fn test_create() -> TestResult {
     let repo = create_global_settings_repo().await?;
     let user = create_user("global_settings_create").await?;
-    let one = TimeDelta::minutes(1).add(TimeDelta::seconds(1)).add(TimeDelta::milliseconds(1));
+    let one = TimeDelta::minutes(1)
+        .add(TimeDelta::seconds(1))
+        .add(TimeDelta::milliseconds(1));
     let settings = repo
         .create_custom(CreateGlobalSettingsDto {
             user: user.id.clone(),

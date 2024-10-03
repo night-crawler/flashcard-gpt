@@ -14,7 +14,7 @@ pub struct DeckCardGroupDto {
     pub deck: Arc<DeckDto>,
     #[serde(rename = "out")]
     pub card_group: Arc<CardGroupDto>,
-    
+
     pub num_answered: Option<usize>,
 
     pub time: Time,

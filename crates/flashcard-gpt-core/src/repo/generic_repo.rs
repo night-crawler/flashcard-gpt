@@ -102,7 +102,7 @@ where
             fetch = self.fetch_statement(),
             additional_query = self.additional_query
         );
-        
+
         multi_object_query!(self.db, &query, ("user_id", id.into()))
     }
 
@@ -133,7 +133,7 @@ where
 
         Ok(())
     }
-    
+
     pub async fn list_all(&self) -> Result<Vec<Read>, CoreError> {
         let query = format!(
             r#"
@@ -143,7 +143,7 @@ where
             fetch = self.fetch_statement(),
             additional_query = self.additional_query
         );
-        
+
         multi_object_query!(self.db, &query,)
     }
 
@@ -162,7 +162,7 @@ where
             ""
         }
     }
-    
+
     pub fn fetch_statement(&self) -> String {
         if self.fetch.is_empty() {
             String::new()

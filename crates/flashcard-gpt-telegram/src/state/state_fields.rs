@@ -1,10 +1,10 @@
+use crate::ext::rendering::{DisplayJoinOrDash, OptionDisplayExt};
+use flashcard_gpt_core::reexports::db::sql::Thing;
+use serde_json::Value;
 use std::collections::BTreeSet;
 use std::fmt;
 use std::fmt::Display;
 use std::sync::Arc;
-use serde_json::Value;
-use flashcard_gpt_core::reexports::db::sql::Thing;
-use crate::ext::rendering::{DisplayJoinOrDash, OptionDisplayExt};
 
 #[derive(Debug, Default, Clone, enum_fields::EnumFields)]
 pub enum StateFields {

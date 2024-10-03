@@ -1,12 +1,22 @@
 use crate::chat_manager::ChatManager;
 
+use crate::command::answer::AnswerCommand;
+use crate::command::card::CardCommand;
+use crate::command::card_group::CardGroupCommand;
+use crate::command::deck::DeckCommand;
+use crate::command::ext::CommandExt;
+use crate::command::root::RootCommand;
+use crate::command::tag::TagCommand;
+use crate::command::user::UserCommand;
 use crate::schema::answer::{
     handle_cancel_answer, handle_commit_answer, handle_show_article, handle_show_next_card,
     handle_skip_answer,
 };
-use crate::schema::card::{handle_create_card, handle_generate_cards};
+use crate::schema::card::{generate_cards, handle_create_card, handle_generate_cards};
 use crate::schema::deck::handle_create_deck;
 use crate::schema::receive_next;
+use crate::state::bot_state::{BotState, FlashGptDialogue};
+use crate::state::state_fields::StateFields;
 use anyhow::bail;
 use std::str::FromStr;
 use teloxide::adaptors::DefaultParseMode;
@@ -19,16 +29,6 @@ use teloxide::types::{
 use teloxide::utils::command::BotCommands;
 use teloxide::Bot;
 use tracing::{error, info, warn};
-use crate::command::answer::AnswerCommand;
-use crate::command::card::CardCommand;
-use crate::command::card_group::CardGroupCommand;
-use crate::command::deck::DeckCommand;
-use crate::command::ext::CommandExt;
-use crate::command::root::RootCommand;
-use crate::command::tag::TagCommand;
-use crate::command::user::UserCommand;
-use crate::state::bot_state::{BotState, FlashGptDialogue};
-use crate::state::state_fields::StateFields;
 
 pub fn root_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let root_command_handler = teloxide::filter_command::<RootCommand, _>()
@@ -171,7 +171,9 @@ pub(super) async fn receive_root_menu_item(
             } else {
                 bail!("Invalid state: {:?}", fields);
             }
-            manager.update_state(BotState::ReceiveDeckTags(fields)).await?;
+            manager
+                .update_state(BotState::ReceiveDeckTags(fields))
+                .await?;
             manager.send_tag_menu().await?;
         }
 
@@ -181,7 +183,9 @@ pub(super) async fn receive_root_menu_item(
             } else {
                 bail!("Invalid state: {:?}", fields);
             }
-            manager.update_state(BotState::ReceiveCardTags(fields)).await?;
+            manager
+                .update_state(BotState::ReceiveCardTags(fields))
+                .await?;
             manager.send_tag_menu().await?;
         }
 
@@ -229,6 +233,11 @@ pub(super) async fn receive_root_menu_item(
         }
         (Some(BotState::Answering(_)), item) if let Ok(difficulty) = item.parse::<u8>() => {
             handle_commit_answer(manager, difficulty).await?;
+        }
+        (Some(BotState::ReceiveGenerateCardConfirm(_)), item)
+            if let Ok(CardCommand::Next) = CardCommand::from_str(item) =>
+        {
+            generate_cards(manager).await?;
         }
         (state, item) => {
             warn!(?state, %item, "No handler for");
