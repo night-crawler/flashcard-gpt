@@ -20,8 +20,7 @@ use crate::db::repositories::Repositories;
 use crate::ext::markdown::MarkdownFormatter;
 use crate::notifier_task::init_notifier;
 use crate::schema::schema;
-use crate::state::{FlashGptDialogue, State};
-use flashcard_gpt_core::llm::card_generator::CardGenerator;
+use flashcard_gpt_core::llm::custom_executor::CustomExecutor;
 use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
 use flashcard_gpt_core::logging::init_tracing;
 use flashcard_gpt_core::reexports::db::engine::remote::ws::{Client, Ws};
@@ -37,6 +36,7 @@ use teloxide::types::ParseMode;
 use teloxide::{dispatching::dialogue::InMemStorage, prelude::*};
 use tokio::task::JoinSet;
 use tracing::{info, span, warn, Level};
+use crate::state::bot_state::BotState;
 
 fn init_card_generator_service(
     repositories: &Repositories,
@@ -47,7 +47,7 @@ fn init_card_generator_service(
     options.add_option(Opt::Model(ModelRef::from_model_name("chatgpt-4o-latest")));
     let options = options.build();
     let exec = Executor::new_with_options(options)?;
-    let card_generator = CardGenerator::new(exec);
+    let card_generator = CustomExecutor::new(exec);
 
     Ok(CardGeneratorService::new(
         card_generator,
@@ -87,7 +87,7 @@ async fn main() -> anyhow::Result<()> {
     let span = span!(Level::INFO, "root");
 
     let bot: DefaultParseMode<Bot> = Bot::from_env().parse_mode(ParseMode::Html);
-    let state: Arc<InMemStorage<State>> = InMemStorage::<State>::new();
+    let state: Arc<InMemStorage<BotState>> = InMemStorage::<BotState>::new();
 
     let notifier = init_notifier(
         bot.clone(),

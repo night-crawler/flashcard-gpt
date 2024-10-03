@@ -1,6 +1,6 @@
 use testresult::TestResult;
 
-use chrono::{DateTime, Days};
+use chrono::{DateTime, Days, Duration};
 use flashcard_gpt_core::dto::deck::{CreateDeckDto, DeckSettings};
 use flashcard_gpt_core::dto::deck_card::CreateDeckCardDto;
 use flashcard_gpt_core::dto::deck_card_group::CreateDeckCardGroupDto;
@@ -231,7 +231,9 @@ async fn test_get_top_ranked_card_group() -> TestResult {
                 time: Some(Time {
                     created_at: now.checked_sub_days(Days::new(index as _)).unwrap(),
                     updated_at: now.checked_sub_days(Days::new(index as _)).unwrap(),
+                    deleted_at: None,
                 }),
+                hide_for: Some(Duration::seconds(10000)),
             })
             .await?;
 
@@ -248,7 +250,9 @@ async fn test_get_top_ranked_card_group() -> TestResult {
                 time: Some(Time {
                     created_at: now.checked_sub_days(Days::new(index as _)).unwrap(),
                     updated_at: now.checked_sub_days(Days::new(index as _)).unwrap(),
+                    deleted_at: None,
                 }),
+                hide_for: Some(Duration::seconds(10000)),
             })
             .await?;
 

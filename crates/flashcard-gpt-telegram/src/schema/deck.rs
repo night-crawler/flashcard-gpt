@@ -1,11 +1,10 @@
 use crate::chat_manager::ChatManager;
-use crate::command::DeckCommand;
 use crate::db::repositories::Repositories;
 use crate::ext::StrExt;
 use crate::schema::receive_next;
 use crate::schema::root::cancel;
-use crate::state::{State, StateFields};
-use crate::{patch_state, FlashGptDialogue};
+
+use crate::{patch_state};
 use anyhow::anyhow;
 use flashcard_gpt_core::dto::deck::{CreateDeckDto, DeckSettings};
 use std::collections::BTreeSet;
@@ -13,10 +12,13 @@ use std::sync::Arc;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Message, Update};
+use crate::command::deck::DeckCommand;
+use crate::state::bot_state::{BotState, FlashGptDialogue};
+use crate::state::state_fields::StateFields;
 
 pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let deck_command_handler = teloxide::filter_command::<DeckCommand, _>().branch(
-        case![State::InsideDeckMenu(fields)]
+        case![BotState::InsideDeckMenu(fields)]
             .branch(case![DeckCommand::Create].endpoint(handle_create_deck)),
     );
 
@@ -26,18 +28,18 @@ pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
             teloxide::filter_command::<DeckCommand, _>()
                 .branch(case![DeckCommand::Cancel].endpoint(cancel)),
         )
-        .branch(case![State::ReceiveDeckTitle(fields)].endpoint(receive_deck_title))
+        .branch(case![BotState::ReceiveDeckTitle(fields)].endpoint(receive_deck_title))
         .branch(
-            case![State::ReceiveDeckTags(fields)]
+            case![BotState::ReceiveDeckTags(fields)]
                 .branch(
                     teloxide::filter_command::<DeckCommand, _>()
                         .branch(case![DeckCommand::Next].endpoint(receive_next)),
                 )
                 .endpoint(receive_deck_tags),
         )
-        .branch(case![State::ReceiveDeckDescription(fields)].endpoint(receive_deck_description))
+        .branch(case![BotState::ReceiveDeckDescription(fields)].endpoint(receive_deck_description))
         .branch(
-            case![State::ReceiveDeckParent(fields)]
+            case![BotState::ReceiveDeckParent(fields)]
                 .branch(
                     teloxide::filter_command::<DeckCommand, _>()
                         .branch(case![DeckCommand::Next].endpoint(receive_next)),
@@ -45,7 +47,7 @@ pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
                 .endpoint(receive_deck_parent),
         )
         .branch(
-            case![State::ReceiveDeckSettingsDailyLimit(fields)]
+            case![BotState::ReceiveDeckSettingsDailyLimit(fields)]
                 .branch(
                     teloxide::filter_command::<DeckCommand, _>()
                         .branch(case![DeckCommand::Next].endpoint(receive_next)),
@@ -53,7 +55,7 @@ pub fn deck_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
                 .endpoint(receive_deck_settings),
         )
         .branch(
-            case![State::ReceiveDeckConfirm(fields)].branch(
+            case![BotState::ReceiveDeckConfirm(fields)].branch(
                 teloxide::filter_command::<DeckCommand, _>()
                     .branch(case![DeckCommand::Next].endpoint(create_deck)),
             ),
@@ -69,7 +71,7 @@ pub async fn handle_create_deck(manager: ChatManager) -> anyhow::Result<()> {
         )
         .await?;
     manager
-        .update_state(State::ReceiveDeckTitle(StateFields::default_deck()))
+        .update_state(BotState::ReceiveDeckTitle(StateFields::default_deck()))
         .await?;
     manager.send_state_and_prompt().await?;
     Ok(())
@@ -89,7 +91,7 @@ async fn receive_deck_title(manager: ChatManager, msg: Message) -> anyhow::Resul
         }
     );
 
-    manager.update_state(State::ReceiveDeckTags(fields)).await?;
+    manager.update_state(BotState::ReceiveDeckTags(fields)).await?;
     manager.send_tag_menu().await?;
 
     Ok(())
@@ -106,7 +108,7 @@ async fn receive_deck_tags(manager: ChatManager) -> anyhow::Result<()> {
         StateFields::Deck { tags },
         |tags: &mut BTreeSet<Arc<str>>| { tags.extend(new_tags) }
     );
-    manager.update_state(State::ReceiveDeckTags(fields)).await?;
+    manager.update_state(BotState::ReceiveDeckTags(fields)).await?;
     manager.send_tag_menu().await?;
     Ok(())
 }
@@ -123,7 +125,7 @@ async fn receive_deck_description(manager: ChatManager) -> anyhow::Result<()> {
         |description: &mut Option<Arc<str>>| { description.replace(next_description) }
     );
     manager
-        .update_state(State::ReceiveDeckParent(fields))
+        .update_state(BotState::ReceiveDeckParent(fields))
         .await?;
     manager.send_deck_menu().await?;
 
@@ -148,7 +150,7 @@ async fn receive_deck_settings(manager: ChatManager) -> anyhow::Result<()> {
     );
 
     manager
-        .update_state(State::ReceiveDeckConfirm(fields))
+        .update_state(BotState::ReceiveDeckConfirm(fields))
         .await?;
     manager.send_state_and_prompt().await?;
     Ok(())

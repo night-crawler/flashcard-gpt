@@ -1,8 +1,5 @@
 use crate::chat_manager::ChatManager;
-use crate::command::{
-    AnswerCommand, CardCommand, CardGroupCommand, CommandExt, DeckCommand, RootCommand, TagCommand,
-    UserCommand,
-};
+
 use crate::schema::answer::{
     handle_cancel_answer, handle_commit_answer, handle_show_article, handle_show_next_card,
     handle_skip_answer,
@@ -10,7 +7,6 @@ use crate::schema::answer::{
 use crate::schema::card::{handle_create_card, handle_generate_cards};
 use crate::schema::deck::handle_create_deck;
 use crate::schema::receive_next;
-use crate::state::{FlashGptDialogue, State, StateFields};
 use anyhow::bail;
 use std::str::FromStr;
 use teloxide::adaptors::DefaultParseMode;
@@ -23,11 +19,21 @@ use teloxide::types::{
 use teloxide::utils::command::BotCommands;
 use teloxide::Bot;
 use tracing::{error, info, warn};
+use crate::command::answer::AnswerCommand;
+use crate::command::card::CardCommand;
+use crate::command::card_group::CardGroupCommand;
+use crate::command::deck::DeckCommand;
+use crate::command::ext::CommandExt;
+use crate::command::root::RootCommand;
+use crate::command::tag::TagCommand;
+use crate::command::user::UserCommand;
+use crate::state::bot_state::{BotState, FlashGptDialogue};
+use crate::state::state_fields::StateFields;
 
 pub fn root_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let root_command_handler = teloxide::filter_command::<RootCommand, _>()
         .branch(
-            case![State::InsideRootMenu(fields)]
+            case![BotState::InsideRootMenu(fields)]
                 .branch(case![RootCommand::Help].endpoint(handle_root_help))
                 .branch(case![RootCommand::Start].endpoint(handle_start))
                 .branch(case![RootCommand::Deck].endpoint(handle_show_generic_menu::<DeckCommand>))
@@ -87,7 +93,7 @@ pub(super) async fn receive_root_menu_item(
         )
         .await?;
         dialogue
-            .update(State::InsideRootMenu(StateFields::Empty))
+            .update(BotState::InsideRootMenu(StateFields::Empty))
             .await?;
         return Ok(());
     };
@@ -104,7 +110,7 @@ pub(super) async fn receive_root_menu_item(
     info!(?state, menu_item, "Received a menu item");
 
     match (state, menu_item.as_str()) {
-        (None | Some(State::InsideRootMenu(_)), item)
+        (None | Some(BotState::InsideRootMenu(_)), item)
             if let Ok(cmd) = RootCommand::from_str(item) =>
         {
             match cmd {
@@ -135,7 +141,7 @@ pub(super) async fn receive_root_menu_item(
             }
         }
 
-        (Some(State::InsideCardMenu(_)), item) if let Ok(cmd) = CardCommand::from_str(item) => {
+        (Some(BotState::InsideCardMenu(_)), item) if let Ok(cmd) = CardCommand::from_str(item) => {
             match cmd {
                 CardCommand::List => {
                     bot.send_message(dialogue.chat_id(), "Not implemented yet")
@@ -148,7 +154,7 @@ pub(super) async fn receive_root_menu_item(
             }
         }
 
-        (Some(State::InsideDeckMenu(_)), item) if let Ok(cmd) = DeckCommand::from_str(item) => {
+        (Some(BotState::InsideDeckMenu(_)), item) if let Ok(cmd) = DeckCommand::from_str(item) => {
             match cmd {
                 DeckCommand::Create => {
                     handle_create_deck(manager).await?;
@@ -159,61 +165,61 @@ pub(super) async fn receive_root_menu_item(
                 }
             }
         }
-        (Some(State::ReceiveDeckTags(mut fields)), tag) => {
+        (Some(BotState::ReceiveDeckTags(mut fields)), tag) => {
             if let Some(tags) = fields.tags_mut() {
                 tags.insert(tag.into());
             } else {
                 bail!("Invalid state: {:?}", fields);
             }
-            manager.update_state(State::ReceiveDeckTags(fields)).await?;
+            manager.update_state(BotState::ReceiveDeckTags(fields)).await?;
             manager.send_tag_menu().await?;
         }
 
-        (Some(State::ReceiveCardTags(mut fields)), tag) => {
+        (Some(BotState::ReceiveCardTags(mut fields)), tag) => {
             if let Some(tags) = fields.tags_mut() {
                 tags.insert(tag.into());
             } else {
                 bail!("Invalid state: {:?}", fields);
             }
-            manager.update_state(State::ReceiveCardTags(fields)).await?;
+            manager.update_state(BotState::ReceiveCardTags(fields)).await?;
             manager.send_tag_menu().await?;
         }
 
-        (Some(State::ReceiveDeckParent(mut fields)), next_parent) => {
+        (Some(BotState::ReceiveDeckParent(mut fields)), next_parent) => {
             if let Some(parent) = fields.parent_mut() {
                 parent.replace(next_parent.into());
             } else {
                 bail!("Invalid state: {:?}", fields);
             }
             manager
-                .update_state(State::ReceiveDeckSettingsDailyLimit(fields))
+                .update_state(BotState::ReceiveDeckSettingsDailyLimit(fields))
                 .await?;
             manager.send_state_and_prompt().await?;
         }
 
-        (Some(State::ReceiveCardDeck(mut fields)), next_deck) => {
+        (Some(BotState::ReceiveCardDeck(mut fields)), next_deck) => {
             if let Some(deck) = fields.deck_mut() {
                 deck.replace(next_deck.into());
             } else {
                 bail!("Invalid state: {:?}", fields);
             }
             manager
-                .update_state(State::ReceiveCardConfirm(fields))
+                .update_state(BotState::ReceiveCardConfirm(fields))
                 .await?;
             manager.send_state_and_prompt().await?;
         }
-        (Some(State::ReceiveGenerateCardDeck(mut fields)), next_deck) => {
+        (Some(BotState::ReceiveGenerateCardDeck(mut fields)), next_deck) => {
             if let Some(deck) = fields.deck_mut() {
                 deck.replace(next_deck.into());
             } else {
                 bail!("Invalid state: {:?}", fields);
             }
             manager
-                .update_state(State::ReceiveGenerateCardPrompt(fields))
+                .update_state(BotState::ReceiveGenerateCardPrompt(fields))
                 .await?;
             manager.send_state_and_prompt().await?;
         }
-        (Some(State::Answering(_)), item) if let Ok(cmd) = AnswerCommand::from_str(item) => {
+        (Some(BotState::Answering(_)), item) if let Ok(cmd) = AnswerCommand::from_str(item) => {
             match cmd {
                 AnswerCommand::Article => handle_show_article(manager).await?,
                 AnswerCommand::Next => handle_show_next_card(manager).await?,
@@ -221,7 +227,7 @@ pub(super) async fn receive_root_menu_item(
                 AnswerCommand::Skip => handle_skip_answer(manager).await?,
             }
         }
-        (Some(State::Answering(_)), item) if let Ok(difficulty) = item.parse::<u8>() => {
+        (Some(BotState::Answering(_)), item) if let Ok(difficulty) = item.parse::<u8>() => {
             handle_commit_answer(manager, difficulty).await?;
         }
         (state, item) => {

@@ -1,3 +1,4 @@
+use chrono::Duration;
 use flashcard_gpt_core::dto::deck_card::CreateDeckCardDto;
 use flashcard_gpt_core::dto::deck_card_group::CreateDeckCardGroupDto;
 use flashcard_gpt_core::dto::history::CreateHistoryDto;
@@ -53,6 +54,7 @@ async fn test_create() -> TestResult {
             deck_card_group: None,
             difficulty: 3,
             time: None,
+            hide_for: None,
         })
         .await?;
     assert_ne!(history.time.created_at, time);
@@ -67,7 +69,9 @@ async fn test_create() -> TestResult {
             time: Some(Time {
                 created_at: time.to_utc(),
                 updated_at: time.to_utc(),
+                deleted_at: None,
             }),
+            hide_for: Some(Duration::seconds(10000)),
         })
         .await?;
 
@@ -99,12 +103,13 @@ async fn test_create() -> TestResult {
         .await?;
 
     let history = repo
-        .create(CreateHistoryDto {
+        .create_custom(CreateHistoryDto {
             user: user.id.clone(),
             deck_card: None,
             deck_card_group: Some(deck_card_group.id.clone()),
             difficulty: 2,
             time: None,
+            hide_for: Some(Duration::seconds(10000)),
         })
         .await?;
 

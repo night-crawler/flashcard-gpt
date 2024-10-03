@@ -26,11 +26,11 @@ impl CustomStep {
 }
 
 #[derive(Clone)]
-pub struct CardGenerator {
+pub struct CustomExecutor {
     executor: Executor,
 }
 
-impl CardGenerator {
+impl CustomExecutor {
     pub fn new(executor: Executor) -> Self {
         Self { executor }
     }

@@ -1,17 +1,18 @@
 use crate::chat_manager::ChatManager;
-use crate::command::{AnswerCommand, RootCommand};
 use crate::ext::card::ExtractValueExt;
-use crate::state::State;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Update};
 use tracing::info;
+use crate::command::answer::AnswerCommand;
+use crate::command::root::RootCommand;
 use crate::schema::root::handle_show_generic_menu;
+use crate::state::bot_state::BotState;
 
 pub fn answering_schema(
 ) -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let answering_command_handler = teloxide::filter_command::<AnswerCommand, _>().branch(
-        case![State::Answering(fields)]
+        case![BotState::Answering(fields)]
             .branch(case![AnswerCommand::Article].endpoint(handle_show_article))
             .branch(case![AnswerCommand::Skip].endpoint(handle_skip_answer))
             .branch(case![AnswerCommand::Next].endpoint(handle_show_next_card))
@@ -20,7 +21,7 @@ pub fn answering_schema(
 
     let answering_message_handler = Update::filter_message()
         .branch(answering_command_handler)
-        .branch(case![State::Answering(fields)].endpoint(handle_answering_message));
+        .branch(case![BotState::Answering(fields)].endpoint(handle_answering_message));
 
     answering_message_handler
 }
@@ -89,7 +90,7 @@ pub async fn handle_show_next_card(manager: ChatManager) -> anyhow::Result<()> {
         return Ok(());
     };
 
-    manager.update_state(State::Answering(fields)).await?;
+    manager.update_state(BotState::Answering(fields)).await?;
     manager.send_card(card).await?;
     manager.send_answer_menu().await?;
 

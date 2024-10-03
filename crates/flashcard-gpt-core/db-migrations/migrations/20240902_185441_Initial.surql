@@ -32,6 +32,7 @@ DEFINE FIELD tags ON card TYPE set<record<tag>> DEFAULT [] PERMISSIONS FULL;
 DEFINE FIELD time ON card TYPE object DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON card TYPE datetime DEFAULT time::now() VALUE $value OR $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON card TYPE datetime DEFAULT time::now() VALUE $value OR time::now() PERMISSIONS FULL;
+DEFINE FIELD time.deleted_at ON card TYPE option<datetime> DEFAULT none PERMISSIONS FULL;
 DEFINE FIELD title ON card TYPE string PERMISSIONS FULL;
 DEFINE FIELD user ON card TYPE record<user> ASSERT $value != NONE AND $value != NULL AND fn::exists(<string> $value) PERMISSIONS FULL;
 
@@ -47,6 +48,7 @@ DEFINE FIELD title ON card_group TYPE string PERMISSIONS FULL;
 DEFINE FIELD time ON card_group TYPE object DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON card_group TYPE datetime DEFAULT time::now() VALUE $value OR $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON card_group TYPE datetime DEFAULT time::now() VALUE $value OR time::now() PERMISSIONS FULL;
+DEFINE FIELD time.deleted_at ON card_group TYPE option<datetime> DEFAULT none PERMISSIONS FULL;
 DEFINE FIELD cards ON card_group TYPE array<record<card>> DEFAULT [] PERMISSIONS FULL;
 DEFINE FIELD user ON card_group TYPE record<user> ASSERT $value != NONE AND $value != NULL AND fn::exists(<string> $value) PERMISSIONS FULL;
 DEFINE FIELD tags ON card_group TYPE set<record<tag>> DEFAULT [] PERMISSIONS FULL;
@@ -65,6 +67,7 @@ DEFINE FIELD tags ON deck TYPE set<record<tag>> DEFAULT [] PERMISSIONS FULL;
 DEFINE FIELD time ON deck TYPE object DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON deck TYPE datetime DEFAULT time::now() VALUE $value OR $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON deck TYPE datetime DEFAULT time::now() VALUE $value OR time::now() PERMISSIONS FULL;
+DEFINE FIELD time.deleted_at ON deck TYPE option<datetime> DEFAULT none PERMISSIONS FULL;
 DEFINE FIELD title ON deck TYPE string ASSERT $value != NONE AND $value != NULL PERMISSIONS FULL;
 DEFINE FIELD user ON deck TYPE record<user> ASSERT $value != NONE AND $value != NULL AND fn::exists(<string> $value) PERMISSIONS FULL;
 
@@ -117,6 +120,9 @@ DEFINE FIELD user ON history TYPE record<user> ASSERT $value != NONE AND $value 
 DEFINE FIELD deck_card ON history TYPE option<record<deck_card>> PERMISSIONS FULL;
 DEFINE FIELD deck_card_group ON history TYPE option<record<deck_card_group>> PERMISSIONS FULL;
 DEFINE FIELD difficulty ON history TYPE int DEFAULT 0 ASSERT $value >= 0 AND $value <= 10 PERMISSIONS FULL;
+
+DEFINE FIELD hide_for ON history TYPE option<duration> DEFAULT none PERMISSIONS FULL;
+
 DEFINE FIELD time ON history TYPE option<object> DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON history TYPE datetime DEFAULT time::now() VALUE $value OR $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON history TYPE datetime DEFAULT time::now() VALUE $value OR time::now() PERMISSIONS FULL;
@@ -151,6 +157,7 @@ DEFINE FIELD user ON tag TYPE record<user> ASSERT $value != NONE AND $value != N
 DEFINE FIELD time ON tag TYPE object DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON tag TYPE datetime DEFAULT time::now() VALUE $value OR $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON tag TYPE datetime DEFAULT time::now() VALUE $value OR time::now() PERMISSIONS FULL;
+DEFINE FIELD time.deleted_at ON tag TYPE option<datetime> DEFAULT none PERMISSIONS FULL;
 
 DEFINE INDEX unique_user_slug ON tag FIELDS user, slug UNIQUE;
 

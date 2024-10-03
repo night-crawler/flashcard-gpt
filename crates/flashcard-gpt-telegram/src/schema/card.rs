@@ -1,10 +1,8 @@
 use crate::chat_manager::ChatManager;
-use crate::command::CardCommand;
 use crate::ext::StrExt;
 use crate::patch_state;
 use crate::schema::receive_next;
-use crate::schema::root::cancel;
-use crate::state::{State, StateFields};
+use crate::schema::root::{cancel, handle_show_generic_menu};
 use anyhow::anyhow;
 use flashcard_gpt_core::dto::card::CreateCardDto;
 use flashcard_gpt_core::dto::deck_card::CreateDeckCardDto;
@@ -17,10 +15,13 @@ use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Update};
 use tracing::{error, info};
+use crate::command::card::CardCommand;
+use crate::state::bot_state::BotState;
+use crate::state::state_fields::StateFields;
 
 pub fn card_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let card_command_handler = teloxide::filter_command::<CardCommand, _>().branch(
-        case![State::InsideCardMenu(fields)]
+        case![BotState::InsideCardMenu(fields)]
             .branch(case![CardCommand::Create].endpoint(handle_create_card))
             .branch(case![CardCommand::Generate].endpoint(handle_generate_cards)),
     );
@@ -31,14 +32,14 @@ pub fn card_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
             teloxide::filter_command::<CardCommand, _>()
                 .branch(case![CardCommand::Cancel].endpoint(cancel)),
         )
-        .branch(case![State::ReceiveCardTitle(fields)].endpoint(receive_card_title))
-        .branch(case![State::ReceiveCardFront(fields)].endpoint(receive_card_front))
-        .branch(case![State::ReceiveCardBack(fields)].endpoint(receive_card_back))
-        .branch(case![State::ReceiveCardHints(fields)].endpoint(receive_card_hints))
-        .branch(case![State::ReceiveCardDifficulty(fields)].endpoint(receive_card_difficulty))
-        .branch(case![State::ReceiveCardImportance(fields)].endpoint(receive_card_importance))
+        .branch(case![BotState::ReceiveCardTitle(fields)].endpoint(receive_card_title))
+        .branch(case![BotState::ReceiveCardFront(fields)].endpoint(receive_card_front))
+        .branch(case![BotState::ReceiveCardBack(fields)].endpoint(receive_card_back))
+        .branch(case![BotState::ReceiveCardHints(fields)].endpoint(receive_card_hints))
+        .branch(case![BotState::ReceiveCardDifficulty(fields)].endpoint(receive_card_difficulty))
+        .branch(case![BotState::ReceiveCardImportance(fields)].endpoint(receive_card_importance))
         .branch(
-            case![State::ReceiveCardTags(fields)]
+            case![BotState::ReceiveCardTags(fields)]
                 .branch(
                     teloxide::filter_command::<CardCommand, _>()
                         .branch(case![CardCommand::Next].endpoint(receive_next)),
@@ -46,7 +47,7 @@ pub fn card_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
                 .endpoint(receive_card_tags),
         )
         .branch(
-            case![State::ReceiveCardDeck(fields)]
+            case![BotState::ReceiveCardDeck(fields)]
                 .branch(
                     teloxide::filter_command::<CardCommand, _>()
                         .branch(case![CardCommand::Next].endpoint(receive_next)),
@@ -54,14 +55,14 @@ pub fn card_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHa
                 .endpoint(receive_card_deck),
         )
         .branch(
-            case![State::ReceiveCardConfirm(fields)].branch(
+            case![BotState::ReceiveCardConfirm(fields)].branch(
                 teloxide::filter_command::<CardCommand, _>()
                     .branch(case![CardCommand::Next].endpoint(create_card)),
             ),
         )
-        .branch(case![State::ReceiveGenerateCardPrompt(fields)].endpoint(receive_generator_prompt))
+        .branch(case![BotState::ReceiveGenerateCardPrompt(fields)].endpoint(receive_generator_prompt))
         .branch(
-            case![State::ReceiveGenerateCardConfirm(fields)].branch(
+            case![BotState::ReceiveGenerateCardConfirm(fields)].branch(
                 teloxide::filter_command::<CardCommand, _>()
                     .branch(case![CardCommand::Next].endpoint(generate_cards)),
             ),
@@ -77,7 +78,7 @@ pub async fn handle_create_card(manager: ChatManager) -> anyhow::Result<()> {
         )
         .await?;
     manager
-        .update_state(State::ReceiveCardTitle(StateFields::default_card()))
+        .update_state(BotState::ReceiveCardTitle(StateFields::default_card()))
         .await?;
     manager.send_state_and_prompt().await?;
     Ok(())
@@ -95,7 +96,7 @@ async fn receive_card_title(manager: ChatManager) -> anyhow::Result<()> {
     );
 
     manager
-        .update_state(State::ReceiveCardFront(fields))
+        .update_state(BotState::ReceiveCardFront(fields))
         .await?;
     manager.send_state_and_prompt().await?;
 
@@ -113,7 +114,7 @@ async fn receive_card_front(manager: ChatManager) -> anyhow::Result<()> {
         StateFields::Card { front },
         |front: &mut Option<Arc<str>>| { front.replace(next_front) }
     );
-    manager.update_state(State::ReceiveCardBack(fields)).await?;
+    manager.update_state(BotState::ReceiveCardBack(fields)).await?;
     manager.send_state_and_prompt().await?;
     Ok(())
 }
@@ -131,7 +132,7 @@ async fn receive_card_back(manager: ChatManager) -> anyhow::Result<()> {
     });
 
     manager
-        .update_state(State::ReceiveCardHints(fields))
+        .update_state(BotState::ReceiveCardHints(fields))
         .await?;
     manager.send_state_and_prompt().await?;
 
@@ -150,7 +151,7 @@ async fn receive_card_hints(manager: ChatManager) -> anyhow::Result<()> {
         hints.extend(next_hints)
     });
     manager
-        .update_state(State::ReceiveCardDifficulty(fields))
+        .update_state(BotState::ReceiveCardDifficulty(fields))
         .await?;
 
     manager.send_state_and_prompt().await?;
@@ -169,7 +170,7 @@ async fn receive_card_difficulty(manager: ChatManager) -> anyhow::Result<()> {
     );
 
     manager
-        .update_state(State::ReceiveCardImportance(fields))
+        .update_state(BotState::ReceiveCardImportance(fields))
         .await?;
 
     manager.send_state_and_prompt().await?;
@@ -189,7 +190,7 @@ async fn receive_card_importance(manager: ChatManager) -> anyhow::Result<()> {
         |importance: &mut Option<u8>| { importance.replace(next_importance) }
     );
 
-    manager.update_state(State::ReceiveCardTags(fields)).await?;
+    manager.update_state(BotState::ReceiveCardTags(fields)).await?;
     manager.send_tag_menu().await?;
     Ok(())
 }
@@ -205,7 +206,7 @@ async fn receive_card_tags(manager: ChatManager) -> anyhow::Result<()> {
         StateFields::Card { tags },
         |tags: &mut BTreeSet<Arc<str>>| { tags.extend(next_tags) }
     );
-    manager.update_state(State::ReceiveCardTags(fields)).await?;
+    manager.update_state(BotState::ReceiveCardTags(fields)).await?;
     manager.send_tag_menu().await?;
 
     Ok(())
@@ -287,7 +288,7 @@ async fn create_card(manager: ChatManager) -> anyhow::Result<()> {
 
 pub async fn handle_generate_cards(manager: ChatManager) -> anyhow::Result<()> {
     manager
-        .update_state(State::ReceiveGenerateCardDeck(StateFields::GenerateCard {
+        .update_state(BotState::ReceiveGenerateCardDeck(StateFields::GenerateCard {
             deck: None,
             prompt: None,
         }))
@@ -311,9 +312,10 @@ async fn receive_generator_prompt(manager: ChatManager) -> anyhow::Result<()> {
     );
 
     manager
-        .update_state(State::ReceiveGenerateCardConfirm(fields))
+        .update_state(BotState::ReceiveGenerateCardConfirm(fields))
         .await?;
     manager.send_state_and_prompt().await?;
+    manager.send_menu::<CardCommand>().await?;
 
     Ok(())
 }
@@ -362,15 +364,7 @@ async fn generate_cards(
         manager.send_card(card.as_ref()).await?;
     }
 
-    // let cg = manager.repositories.card_groups.get_by_id("card_group:nqxszv5nd2mvl6olb5fi".as_thing()?).await?;
-    // manager.send_card_group(&cg).await?;
-    // for card in cg.cards {
-    //     manager.send_card(card.as_ref()).await?;
-    // }
-
-    manager
-        .update_state(State::InsideCardMenu(StateFields::Empty))
-        .await?;
+    handle_show_generic_menu::<CardCommand>(manager).await?;
 
     Ok(())
 }

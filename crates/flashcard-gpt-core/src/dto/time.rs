@@ -5,4 +5,5 @@ use serde::{Deserialize, Serialize};
 pub struct Time {
     pub created_at: chrono::DateTime<Utc>,
     pub updated_at: chrono::DateTime<Utc>,
+    pub deleted_at: Option<chrono::DateTime<Utc>>,
 }

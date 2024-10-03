@@ -1,11 +1,8 @@
-use crate::command::{AnswerCommand, CommandExt};
 use crate::db::repositories::Repositories;
 use crate::ext::card::ExtractValueExt;
 use crate::ext::markdown::MarkdownFormatter;
 use crate::ext::menu_repr::IteratorMenuReprExt;
 use crate::message_render::RenderMessageTextHelper;
-use crate::state::FlashGptDialogue;
-use crate::state::{State, StateDescription};
 use anyhow::bail;
 use flashcard_gpt_core::dto::binding::BindingDto;
 use flashcard_gpt_core::dto::card::CardDto;
@@ -24,6 +21,10 @@ use teloxide::utils::command::BotCommands;
 use teloxide::Bot;
 use tracing::{warn, Span};
 use flashcard_gpt_core::dto::history::CreateHistoryDto;
+use crate::command::answer::AnswerCommand;
+use crate::command::ext::CommandExt;
+use crate::state::bot_state::{BotState, FlashGptDialogue};
+use crate::state::state_description::StateDescription;
 
 static DIGITS: [&str; 11] = [
     "0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟",
@@ -41,7 +42,7 @@ pub struct ChatManager {
 }
 
 impl ChatManager {
-    pub async fn update_state(&self, next_state: State) -> anyhow::Result<StateDescription> {
+    pub async fn update_state(&self, next_state: BotState) -> anyhow::Result<StateDescription> {
         let desc = next_state.get_state_description(self.message.as_deref());
         self.dialogue.update(next_state).await?;
         Ok(desc)
@@ -79,7 +80,7 @@ impl ChatManager {
         self.send_message(text).await
     }
 
-    pub async fn get_state(&self) -> anyhow::Result<State> {
+    pub async fn get_state(&self) -> anyhow::Result<BotState> {
         Ok(self.dialogue.get_or_default().await?)
     }
 
@@ -383,6 +384,7 @@ impl ChatManager {
                 deck_card_group: dcg_id.clone().into(),
                 difficulty,
                 time: None,
+                hide_for: None,
             }).await?;
             return Ok(());
         }
@@ -394,6 +396,7 @@ impl ChatManager {
                 deck_card_group: None,
                 difficulty,
                 time: None,
+                hide_for: None,
             }).await?;
             return Ok(());
         }

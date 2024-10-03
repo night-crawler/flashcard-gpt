@@ -17,7 +17,7 @@ impl HistoryRepo {
             db,
             span,
             "history",
-            "",
+            ", <option<string>> hide_for as hide_for",
             r#"
                 deck_card_group, 
                 deck_card_group.in, deck_card_group.out,
@@ -44,18 +44,20 @@ impl HistoryRepo {
                 deck_card: $dto.deck_card,
                 deck_card_group: $dto.deck_card_group,
                 difficulty: $dto.difficulty,
+                hide_for: <option<duration>> $dto.hide_for,
                 time: {{
                     created_at: <datetime> ($dto.time.created_at or time::now()),
                     updated_at: <datetime> ($dto.time.updated_at or time::now()),
                 }}
             }})[0].id;
             
-            select * from $id fetch {fetch};
+            select * {additional_query} from $id fetch {fetch};
             {commit}
             "#,
             begin = self.begin_transaction_statement(),
             commit = self.commit_transaction_statement(),
-            fetch = self.fetch
+            fetch = self.fetch,
+            additional_query = self.additional_query
         );
 
         single_object_query!(self.db, &query, ("dto", dto))

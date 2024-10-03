@@ -5,7 +5,6 @@ use crate::ext::markdown::MarkdownFormatter;
 use crate::schema::card::card_schema;
 use crate::schema::deck::deck_schema;
 use crate::schema::root::{receive_inline_query, receive_root_menu_item, root_schema};
-use crate::state::{FlashGptDialogue, State};
 use flashcard_gpt_core::dto::binding::BindingDto;
 use std::sync::Arc;
 use teloxide::adaptors::DefaultParseMode;
@@ -16,6 +15,7 @@ use teloxide::types::UpdateKind;
 use teloxide::{dptree, Bot};
 use tracing::{debug, warn, Span};
 use crate::schema::answer::answering_schema;
+use crate::state::bot_state::{BotState, FlashGptDialogue};
 
 mod card;
 mod deck;
@@ -27,7 +27,7 @@ pub fn schema() -> UpdateHandler<anyhow::Error> {
     let inline_query_handler =
         Update::filter_inline_query().branch(dptree::endpoint(receive_inline_query));
 
-    let main_branch = dialogue::enter::<Update, InMemStorage<State>, State, _>()
+    let main_branch = dialogue::enter::<Update, InMemStorage<BotState>, BotState, _>()
         .filter_map_async(create_binding)
         .map(init_chat_manager)
         .branch(card_schema())
@@ -83,24 +83,24 @@ async fn create_binding(update: Update, repositories: Repositories) -> Option<Ar
 
 async fn receive_next(manager: ChatManager) -> anyhow::Result<()> {
     match manager.get_state().await? {
-        State::ReceiveDeckTags(fields) => {
-            let next_state = State::ReceiveDeckDescription(fields);
+        BotState::ReceiveDeckTags(fields) => {
+            let next_state = BotState::ReceiveDeckDescription(fields);
             manager.update_state(next_state).await?;
             manager.send_state_and_prompt().await?;
         }
-        State::ReceiveCardTags(fields) => {
-            let next_state = State::ReceiveCardDeck(fields);
+        BotState::ReceiveCardTags(fields) => {
+            let next_state = BotState::ReceiveCardDeck(fields);
             manager.update_state(next_state).await?;
             manager.send_deck_menu().await?;
         }
-        State::ReceiveDeckDescription { .. } => {}
-        State::ReceiveDeckParent(fields) => {
-            let next_state = State::ReceiveDeckSettingsDailyLimit(fields);
+        BotState::ReceiveDeckDescription { .. } => {}
+        BotState::ReceiveDeckParent(fields) => {
+            let next_state = BotState::ReceiveDeckSettingsDailyLimit(fields);
             manager.update_state(next_state).await?;
             manager.send_state_and_prompt().await?;
         }
-        State::ReceiveDeckSettingsDailyLimit(fields) => {
-            let next_state = State::ReceiveDeckConfirm(fields);
+        BotState::ReceiveDeckSettingsDailyLimit(fields) => {
+            let next_state = BotState::ReceiveDeckConfirm(fields);
             manager.update_state(next_state).await?;
             manager.send_state_and_prompt().await?;
         }

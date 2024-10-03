@@ -3,7 +3,6 @@ use crate::chat_manager::ChatManager;
 use crate::db::repositories::Repositories;
 use crate::ext::binding::ChatIdExt;
 use crate::ext::markdown::MarkdownFormatter;
-use crate::state::{FlashGptDialogue, State, StateFields};
 use chrono::{TimeDelta, Timelike, Utc};
 use std::sync::Arc;
 use std::time::Duration;
@@ -13,11 +12,13 @@ use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::Bot;
 use tokio::time::sleep;
 use tracing::{debug, Span};
-use crate::command::AnswerCommand;
+use crate::command::answer::AnswerCommand;
+use crate::state::bot_state::{BotState, FlashGptDialogue};
+use crate::state::state_fields::StateFields;
 
 pub async fn init_notifier(
     bot: DefaultParseMode<Bot>,
-    storage: Arc<InMemStorage<State>>,
+    storage: Arc<InMemStorage<BotState>>,
     formatter: MarkdownFormatter,
     repositories: Repositories,
     span: Span,
@@ -69,7 +70,7 @@ pub async fn init_notifier(
                 }
                 let card_id = rand::thread_rng().gen_range(0..dcgs.len());
                 let dcg = dcgs.swap_remove(card_id);
-                manager.update_state(State::Answering(StateFields::Answer {
+                manager.update_state(BotState::Answering(StateFields::Answer {
                     deck_card_group_id: Some(dcg.id),
                     deck_card_group_card_seq: Some(0),
                     deck_card_id: None,
@@ -87,7 +88,7 @@ pub async fn init_notifier(
                 }
                 let id = rand::thread_rng().gen_range(0..dcs.len());
                 let dc = dcs.swap_remove(id);
-                manager.update_state(State::Answering(StateFields::Answer {
+                manager.update_state(BotState::Answering(StateFields::Answer {
                     deck_card_group_id: None,
                     deck_card_group_card_seq: None,
                     deck_card_id: Some(dc.id),

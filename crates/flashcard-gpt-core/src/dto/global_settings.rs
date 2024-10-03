@@ -1,19 +1,20 @@
+use super::{from_raw_durations, to_raw_durations};
 use crate::dto::time::Time;
 use crate::dto::user::User;
 use crate::reexports::db::sql::Thing;
 use bon::Builder;
 use chrono::{DateTime, Duration, NaiveTime};
 use chrono_tz::Tz;
-use humantime::format_duration;
-use humantime::parse_duration;
-use serde::de::Error;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Builder)]
 pub struct GlobalSettingsDto {
     pub id: Thing,
     pub daily_limit: u16,
-    #[serde(deserialize_with = "from_raw", serialize_with = "to_raw")]
+    #[serde(
+        deserialize_with = "from_raw_durations",
+        serialize_with = "to_raw_durations"
+    )]
     pub timetable: Vec<[Duration; 2]>,
     pub timezone: Tz,
     pub user: User,
@@ -40,54 +41,9 @@ impl GlobalSettingsDto {
 pub struct CreateGlobalSettingsDto {
     pub user: Thing,
     pub daily_limit: u16,
-    #[serde(deserialize_with = "from_raw", serialize_with = "to_raw")]
+    #[serde(deserialize_with = "from_raw_durations", serialize_with = "to_raw_durations")]
     pub timetable: Vec<[Duration; 2]>,
     pub timezone: Tz,
-}
-
-fn from_raw<'de, D, const N: usize>(deserializer: D) -> Result<Vec<[Duration; N]>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let pairs: Vec<Vec<String>> = Deserialize::deserialize(deserializer)?;
-    let mut result = vec![];
-
-    for pair in pairs {
-        if pair.len() != N {
-            return Err(Error::custom(format_args!(
-                "expected a pair of durations, got {}",
-                pair.len()
-            )));
-        }
-        let mut inner = [Duration::zero(); N];
-        for (i, dur_str) in pair.into_iter().enumerate() {
-            let duration = parse_duration(&dur_str)
-                .map_err(|err| Error::custom(format_args!("failed to parse duration: {}", err)))?;
-            let duration = Duration::from_std(duration).map_err(|err| {
-                Error::custom(format_args!("failed to convert duration: {}", err))
-            })?;
-            inner[i] = duration;
-        }
-        result.push(inner);
-    }
-
-    Ok(result)
-}
-
-fn to_raw<S, const N: usize>(value: &[[Duration; N]], serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    let s: Vec<Vec<String>> = value
-        .iter()
-        .map(|inner| {
-            inner
-                .iter()
-                .map(|dur| format_duration(dur.to_std().unwrap()).to_string())
-                .collect()
-        })
-        .collect();
-    s.serialize(serializer)
 }
 
 impl From<GlobalSettingsDto> for Thing {
@@ -153,7 +109,7 @@ mod tests {
     #[test]
     fn test_is_within() -> TestResult {
         let now = DateTime::parse_from_rfc3339("2021-02-13T15:30:00Z")?.to_utc();
-        let now= now.with_timezone(&Tz::UTC);
+        let now = now.with_timezone(&Tz::UTC);
         let settings = build_test_settings(vec![
             [Duration::hours(15), Duration::hours(16)],
             [Duration::minutes(0), Duration::hours(3)],

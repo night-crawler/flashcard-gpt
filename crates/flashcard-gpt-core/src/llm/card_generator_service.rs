@@ -3,7 +3,7 @@ use crate::dto::card_group::CreateCardGroupDto;
 use crate::dto::deck_card_group::{CreateDeckCardGroupDto, DeckCardGroupDto};
 use crate::dto::llm::GptCardGroup;
 use crate::error::CoreError;
-use crate::llm::card_generator::{CardGenerator, CustomStep};
+use crate::llm::custom_executor::{CustomExecutor, CustomStep};
 use crate::reexports::db::sql::Thing;
 use crate::repo::card::CardRepo;
 use crate::repo::card_group::CardGroupRepo;
@@ -14,7 +14,7 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct CardGeneratorService {
-    pub card_generator: CardGenerator,
+    pub card_generator: CustomExecutor,
     pub cards: CardRepo,
     pub card_groups: CardGroupRepo,
     pub decks: DeckRepo,
@@ -23,7 +23,7 @@ pub struct CardGeneratorService {
 
 impl CardGeneratorService {
     pub fn new(
-        card_generator: CardGenerator,
+        card_generator: CustomExecutor,
         cards: CardRepo,
         card_groups: CardGroupRepo,
         decks: DeckRepo,

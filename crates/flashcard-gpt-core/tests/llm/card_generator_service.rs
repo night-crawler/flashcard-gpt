@@ -1,4 +1,4 @@
-use flashcard_gpt_core::llm::card_generator::CardGenerator;
+use flashcard_gpt_core::llm::custom_executor::CustomExecutor;
 use std::sync::Arc;
 
 use flashcard_gpt_core::dto::llm::{GptCard, GptCardGroup};
@@ -25,7 +25,7 @@ async fn test_generate_card() -> TestResult {
     let options = options.build();
 
     let exec = llm_chain_openai::chatgpt::Executor::new_with_options(options)?;
-    let generator = CardGenerator::new(exec);
+    let generator = CustomExecutor::new(exec);
 
     let card_generator_service = CardGeneratorService {
         card_generator: generator,
@@ -86,7 +86,7 @@ async fn test_create_cards() -> TestResult {
     };
 
     let card_generator_service = CardGeneratorService {
-        card_generator: CardGenerator::new(llm_chain_openai::chatgpt::Executor::new_with_options(
+        card_generator: CustomExecutor::new(llm_chain_openai::chatgpt::Executor::new_with_options(
             Options::default(),
         )?),
         cards: create_card_repo().await?,
