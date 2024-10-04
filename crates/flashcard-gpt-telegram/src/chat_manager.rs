@@ -19,6 +19,7 @@ use std::fmt::Debug;
 use std::str::pattern::Pattern;
 use std::str::FromStr;
 use std::sync::Arc;
+use chrono::Duration;
 use teloxide::adaptors::DefaultParseMode;
 use teloxide::payloads::SendMessageSetters;
 use teloxide::prelude::{Message, Requester};
@@ -377,7 +378,7 @@ impl ChatManager {
         bail!("Failed to split text {text}")
     }
 
-    pub async fn commit_answer(&self, difficulty: u8) -> anyhow::Result<()> {
+    pub async fn commit_answer(&self, difficulty: u8, hide_for: Option<Duration>) -> anyhow::Result<()> {
         let fields = self.get_state().await?.into_fields();
         if let Some(Some(dcg_id)) = fields.deck_card_group_id() {
             self.repositories
@@ -388,7 +389,7 @@ impl ChatManager {
                     deck_card_group: dcg_id.clone().into(),
                     difficulty,
                     time: None,
-                    hide_for: None,
+                    hide_for,
                 })
                 .await?;
             return Ok(());
@@ -403,7 +404,7 @@ impl ChatManager {
                     deck_card_group: None,
                     difficulty,
                     time: None,
-                    hide_for: None,
+                    hide_for,
                 })
                 .await?;
             return Ok(());

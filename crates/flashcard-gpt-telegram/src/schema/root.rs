@@ -229,6 +229,9 @@ pub(super) async fn receive_root_menu_item(
                 AnswerCommand::Next => handle_show_next_card(manager).await?,
                 AnswerCommand::Cancel => handle_cancel_answer(manager).await?,
                 AnswerCommand::Skip => handle_skip_answer(manager).await?,
+                AnswerCommand::Hide(duration) => {
+                    warn!(%duration, "Received an impossible state from menu item");
+                },
             }
         }
         (Some(BotState::Answering(_)), item) if let Ok(difficulty) = item.parse::<u8>() => {

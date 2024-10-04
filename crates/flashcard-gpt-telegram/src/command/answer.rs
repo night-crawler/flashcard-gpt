@@ -15,13 +15,18 @@ pub enum AnswerCommand {
     Skip,
     /// Next card in the Card Group
     Next,
+
+    /// Hide current card for a specified amount of time (user 3h30m20s or 1w)
+    Hide(String),
     /// Cancel answering
     Cancel,
 }
 
 impl CommandExt for AnswerCommand {
     fn get_menu_items() -> impl Iterator<Item = InlineKeyboardButton> {
-        AnswerCommand::iter().map(|cmd| InlineKeyboardButton::callback(cmd.as_ref(), cmd.as_ref()))
+        AnswerCommand::iter()
+            .filter(|cmd| !matches!(cmd, AnswerCommand::Hide(_)))
+            .map(|cmd| InlineKeyboardButton::callback(cmd.as_ref(), cmd.as_ref()))
     }
 
     fn get_menu_name() -> &'static str {

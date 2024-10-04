@@ -1,3 +1,4 @@
+use humantime::parse_duration;
 use crate::chat_manager::ChatManager;
 use crate::command::answer::AnswerCommand;
 use crate::command::root::RootCommand;
@@ -16,6 +17,7 @@ pub fn answering_schema(
             .branch(case![AnswerCommand::Article].endpoint(handle_show_article))
             .branch(case![AnswerCommand::Skip].endpoint(handle_skip_answer))
             .branch(case![AnswerCommand::Next].endpoint(handle_show_next_card))
+            .branch(case![AnswerCommand::Hide(hide_time)].endpoint(handle_hide_card))
             .branch(case![AnswerCommand::Cancel].endpoint(handle_cancel_answer)),
     );
 
@@ -24,6 +26,21 @@ pub fn answering_schema(
         .branch(case![BotState::Answering(fields)].endpoint(handle_answering_message));
 
     answering_message_handler
+}
+
+async fn handle_hide_card(manager: ChatManager, duration: String) -> anyhow::Result<()> {
+    let duration = match parse_duration(&duration) {
+        Ok(duration) => duration,
+        Err(err) => {
+            manager.send_message(format!("Failed to parse duration `{duration}`: {err}")).await?;
+            return Ok(());
+        }
+    };
+    
+    let duration = chrono::Duration::from_std(duration)?;
+    manager.commit_answer(0, Some(duration)).await?;
+    handle_show_generic_menu::<RootCommand>(manager).await?;
+    Ok(())
 }
 
 pub async fn handle_show_article(manager: ChatManager) -> anyhow::Result<()> {
@@ -50,7 +67,7 @@ pub async fn handle_show_article(manager: ChatManager) -> anyhow::Result<()> {
 }
 
 pub async fn handle_commit_answer(manager: ChatManager, difficulty: u8) -> anyhow::Result<()> {
-    manager.commit_answer(difficulty).await?;
+    manager.commit_answer(difficulty, None).await?;
     handle_show_generic_menu::<RootCommand>(manager).await?;
     Ok(())
 }

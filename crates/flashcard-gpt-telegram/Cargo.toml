@@ -42,6 +42,9 @@ serde_json = { workspace = true }
 
 chrono = { workspace = true }
 chrono-tz = { workspace = true }
+humantime = { workspace = true }
+humantime-serde = { workspace = true }
+
 
 rand = "0.9.0-alpha.2"
 bon = { workspace = true }

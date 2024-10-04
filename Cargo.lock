@@ -1537,6 +1537,8 @@ dependencies = [
  "enum-fields",
  "flashcard-gpt-core",
  "flashcard-gpt-tests",
+ "humantime",
+ "humantime-serde",
  "itertools 0.13.0",
  "llm-chain",
  "llm-chain-openai",
