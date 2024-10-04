@@ -48,6 +48,11 @@ impl HistoryRepo {
                 time: {{
                     created_at: <datetime> ($dto.time.created_at or time::now()),
                     updated_at: <datetime> ($dto.time.updated_at or time::now()),
+                    hide_till: if $dto.hide_for = none {{
+                        none
+                    }} else {{
+                        time::now() + $dto.hide_for
+                    }}
                 }}
             }})[0].id;
             

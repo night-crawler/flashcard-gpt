@@ -126,6 +126,7 @@ DEFINE FIELD hide_for ON history TYPE option<duration> DEFAULT none PERMISSIONS 
 DEFINE FIELD time ON history TYPE option<object> DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON history TYPE datetime DEFAULT time::now() VALUE $value OR $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON history TYPE datetime DEFAULT time::now() VALUE $value OR time::now() PERMISSIONS FULL;
+DEFINE FIELD time.hide_till ON history TYPE option<datetime> DEFAULT none;
 
 DEFINE INDEX created_at_index ON TABLE history COLUMNS time.created_at;
 DEFINE INDEX deck_card_index ON TABLE history COLUMNS deck_card;
@@ -305,4 +306,18 @@ DEFINE FUNCTION OVERWRITE fn::num_answers_for_deck($pk: record, $since: datetime
                 )
         group by deck, what
     )
+};
+
+
+DEFINE FUNCTION OVERWRITE fn::hidden_till($pk: record) {
+    return (
+        select
+            time.hide_till as hide_till
+        from history
+            where
+                deck_card_group = $pk or
+                deck_card = $pk
+        order by hide_till desc
+        limit 1
+    )[0].hide_till
 };

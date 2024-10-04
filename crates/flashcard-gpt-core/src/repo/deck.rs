@@ -111,7 +111,8 @@ impl DeckRepo {
             where 
                 out.user = $user and
                 fn::num_answers_for_deck(in, <datetime> $since) <= in.settings.daily_limit and
-                fn::deck_card_group_answered_times(id, <datetime> $since) = 0
+                fn::deck_card_group_answered_times(id, <datetime> $since) = 0 and
+                fn::hidden_till(id) < time::now()
             order by rank desc
             limit 10
             fetch 
@@ -145,7 +146,8 @@ impl DeckRepo {
                 out.user = $user and
                 fn::num_answers_for_deck(in, <datetime> $since) <= in.settings.daily_limit and
                 fn::appears_in_card_groups_in_this_deck(out, in) = 0 and
-                fn::deck_card_answered_times(id, <datetime> $since) = 0   
+                fn::deck_card_answered_times(id, <datetime> $since) = 0 and
+                fn::hidden_till(id) < time::now()
             order by rank desc
             limit 10
             fetch 
