@@ -1,20 +1,16 @@
-use super::{from_raw_durations, to_raw_durations};
 use crate::dto::time::Time;
 use crate::dto::user::User;
 use crate::reexports::db::sql::Thing;
 use bon::Builder;
-use chrono::{DateTime, Duration, NaiveTime};
+use chrono::{DateTime, NaiveTime};
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
+use surrealdb::sql::Duration;
 
 #[derive(Debug, Serialize, Deserialize, Builder)]
 pub struct GlobalSettingsDto {
     pub id: Thing,
     pub daily_limit: u16,
-    #[serde(
-        deserialize_with = "from_raw_durations",
-        serialize_with = "to_raw_durations"
-    )]
     pub timetable: Vec<[Duration; 2]>,
     pub timezone: Tz,
     pub user: User,
@@ -28,6 +24,10 @@ impl GlobalSettingsDto {
             - NaiveTime::parse_from_str("00:00:00", "%H:%M:%S")
                 .expect("Failed to parse 00:00:00 time, it must never happen");
         for &[start, end] in self.timetable.iter() {
+            let (start, end) = (
+                chrono::Duration::from_std(start.0).unwrap(),
+                chrono::Duration::from_std(end.0).unwrap(),
+            );
             if now_duration >= start && now_duration <= end {
                 return true;
             }
@@ -41,10 +41,6 @@ impl GlobalSettingsDto {
 pub struct CreateGlobalSettingsDto {
     pub user: Thing,
     pub daily_limit: u16,
-    #[serde(
-        deserialize_with = "from_raw_durations",
-        serialize_with = "to_raw_durations"
-    )]
     pub timetable: Vec<[Duration; 2]>,
     pub timezone: Tz,
 }
@@ -85,37 +81,13 @@ mod tests {
             },
         }
     }
-
-    #[test]
-    fn test_serialize() -> TestResult {
-        let settings = build_test_settings(vec![
-            [Duration::minutes(30), Duration::hours(1)],
-            [Duration::minutes(2), Duration::hours(3)],
-        ]);
-
-        let serialized = serde_json::to_string_pretty(&settings)?;
-
-        assert!(serialized.contains("30m"));
-        assert!(serialized.contains("1h"));
-        assert!(serialized.contains("2m"));
-        assert!(serialized.contains("3h"));
-
-        let deserialized: GlobalSettingsDto = serde_json::from_str(&serialized)?;
-        assert_eq!(deserialized.timetable[0][0], Duration::minutes(30));
-        assert_eq!(deserialized.timetable[0][1], Duration::hours(1));
-        assert_eq!(deserialized.timetable[1][0], Duration::minutes(2));
-        assert_eq!(deserialized.timetable[1][1], Duration::hours(3));
-
-        Ok(())
-    }
-
     #[test]
     fn test_is_within() -> TestResult {
         let now = DateTime::parse_from_rfc3339("2021-02-13T15:30:00Z")?.to_utc();
         let now = now.with_timezone(&Tz::UTC);
         let settings = build_test_settings(vec![
-            [Duration::hours(15), Duration::hours(16)],
-            [Duration::minutes(0), Duration::hours(3)],
+            [Duration::from_hours(15), Duration::from_hours(16)],
+            [Duration::from_mins(0), Duration::from_hours(3)],
         ]);
 
         assert!(settings.ts_matches(now));

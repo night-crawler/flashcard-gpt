@@ -19,7 +19,6 @@ use std::fmt::Debug;
 use std::str::pattern::Pattern;
 use std::str::FromStr;
 use std::sync::Arc;
-use chrono::Duration;
 use teloxide::adaptors::DefaultParseMode;
 use teloxide::payloads::SendMessageSetters;
 use teloxide::prelude::{Message, Requester};
@@ -27,6 +26,7 @@ use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::utils::command::BotCommands;
 use teloxide::Bot;
 use tracing::{warn, Span};
+use flashcard_gpt_core::reexports::db::sql::Duration;
 
 static DIGITS: [&str; 11] = [
     "0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟",

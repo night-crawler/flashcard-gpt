@@ -1,25 +1,25 @@
-use chrono::{Duration, TimeDelta};
 use chrono_tz::Tz;
 use flashcard_gpt_core::dto::global_settings::CreateGlobalSettingsDto;
 use flashcard_gpt_tests::db::utils::{create_global_settings_repo, create_user};
 use std::ops::Add;
+use surrealdb::sql::Duration;
 use testresult::TestResult;
 
 #[tokio::test]
 async fn test_create() -> TestResult {
     let repo = create_global_settings_repo().await?;
     let user = create_user("global_settings_create").await?;
-    let one = TimeDelta::minutes(1)
-        .add(TimeDelta::seconds(1))
-        .add(TimeDelta::milliseconds(1));
+    let one = Duration::from_mins(1)
+        .add(Duration::from_secs(1))
+        .add(Duration::from_millis(1));
     let settings = repo
-        .create_custom(CreateGlobalSettingsDto {
+        .create(CreateGlobalSettingsDto {
             user: user.id.clone(),
             daily_limit: 88,
             timetable: vec![
-                [Duration::hours(10).add(one), Duration::hours(11)],
-                [Duration::hours(13), Duration::hours(14)],
-                [Duration::hours(17), Duration::hours(18)],
+                [Duration::from_hours(10).add(one), Duration::from_hours(11)],
+                [Duration::from_hours(13), Duration::from_hours(14)],
+                [Duration::from_hours(17), Duration::from_hours(18)],
             ],
             timezone: Tz::Europe__Dublin,
         })
@@ -29,21 +29,21 @@ async fn test_create() -> TestResult {
     assert_eq!(
         settings.timetable,
         vec![
-            [Duration::hours(10).add(one), Duration::hours(11)],
-            [Duration::hours(13), Duration::hours(14)],
-            [Duration::hours(17), Duration::hours(18)],
+            [Duration::from_hours(10).add(one), Duration::from_hours(11)],
+            [Duration::from_hours(13), Duration::from_hours(14)],
+            [Duration::from_hours(17), Duration::from_hours(18)],
         ]
     );
 
     // second create for the same user must fail
     let result = repo
-        .create_custom(CreateGlobalSettingsDto {
+        .create(CreateGlobalSettingsDto {
             user: user.id.clone(),
             daily_limit: 88,
             timetable: vec![
-                [Duration::hours(10), Duration::hours(11)],
-                [Duration::hours(13), Duration::hours(14)],
-                [Duration::hours(17), Duration::hours(18)],
+                [Duration::from_hours(10), Duration::from_hours(11)],
+                [Duration::from_hours(13), Duration::from_hours(14)],
+                [Duration::from_hours(17), Duration::from_hours(18)],
             ],
             timezone: Tz::Europe__Dublin,
         })

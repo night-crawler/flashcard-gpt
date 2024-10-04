@@ -1,4 +1,3 @@
-use humantime::parse_duration;
 use crate::chat_manager::ChatManager;
 use crate::command::answer::AnswerCommand;
 use crate::command::root::RootCommand;
@@ -9,6 +8,7 @@ use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Update};
 use tracing::info;
+use flashcard_gpt_core::reexports::db::syn;
 
 pub fn answering_schema(
 ) -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
@@ -29,7 +29,7 @@ pub fn answering_schema(
 }
 
 async fn handle_hide_card(manager: ChatManager, duration: String) -> anyhow::Result<()> {
-    let duration = match parse_duration(&duration) {
+    let duration = match syn::duration(&duration) {
         Ok(duration) => duration,
         Err(err) => {
             manager.send_message(format!("Failed to parse duration `{duration}`: {err}")).await?;
@@ -37,7 +37,6 @@ async fn handle_hide_card(manager: ChatManager, duration: String) -> anyhow::Res
         }
     };
     
-    let duration = chrono::Duration::from_std(duration)?;
     manager.commit_answer(0, Some(duration)).await?;
     handle_show_generic_menu::<RootCommand>(manager).await?;
     Ok(())

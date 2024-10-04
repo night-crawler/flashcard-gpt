@@ -17,7 +17,7 @@ impl HistoryRepo {
             db,
             span,
             "history",
-            ", <option<string>> hide_for as hide_for",
+            "",
             r#"
                 deck_card_group, 
                 deck_card_group.in, deck_card_group.out,

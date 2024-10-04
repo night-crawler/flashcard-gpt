@@ -5,7 +5,7 @@ use flashcard_gpt_core::dto::binding::BindingDto;
 use flashcard_gpt_core::dto::global_settings::{CreateGlobalSettingsDto, GlobalSettingsDto};
 use flashcard_gpt_core::error::CoreError;
 use flashcard_gpt_core::reexports::db::engine::remote::ws::Client;
-use flashcard_gpt_core::reexports::db::sql::Thing;
+use flashcard_gpt_core::reexports::db::sql::{Duration, Thing};
 use flashcard_gpt_core::reexports::db::Surreal;
 use flashcard_gpt_core::repo::binding::BindingRepo;
 use flashcard_gpt_core::repo::card::CardRepo;
@@ -86,11 +86,11 @@ impl Repositories {
             Err(err) => {
                 error!(?err, %user, "Failed to get user settings, attempting to create default");
                 self.global_settings
-                    .create_custom(CreateGlobalSettingsDto {
+                    .create(CreateGlobalSettingsDto {
                         user: user.clone(),
                         daily_limit: 50,
                         timetable: vec![
-                            [chrono::Duration::hours(10), chrono::Duration::hours(23)],
+                            [Duration::from_hours(10), Duration::from_hours(23)],
                             // [chrono::Duration::hours(13), chrono::Duration::hours(14)],
                             // [chrono::Duration::hours(17), chrono::Duration::hours(18)],
                         ],
