@@ -92,7 +92,7 @@ impl DeckRepo {
         Ok(response.take(response.num_statements() - 1)?)
     }
 
-    pub async fn get_top_ranked_card_groups(
+    pub async fn list_top_ranked_card_groups(
         &self,
         user: impl Into<Thing>,
         since: chrono::DateTime<Utc>,
@@ -126,7 +126,7 @@ impl DeckRepo {
         multi_object_query!(self.db, query, ("user", user.into()), ("since", since))
     }
 
-    pub async fn get_top_ranked_cards(
+    pub async fn list_top_ranked_cards(
         &self,
         user: impl Into<Thing>,
         since: chrono::DateTime<Utc>,

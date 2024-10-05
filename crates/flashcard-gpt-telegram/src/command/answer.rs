@@ -30,7 +30,7 @@ impl CommandExt for AnswerCommand {
     }
 
     fn get_menu_name() -> &'static str {
-        "Answering"
+        "Answering Menu"
     }
 
     fn get_corresponding_state() -> BotState {

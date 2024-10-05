@@ -155,7 +155,7 @@ async fn test_get_top_ranked_card_group() -> TestResult {
     let user = create_user("test_get_top_ranked_card_group").await?;
     let tag = create_tag().user(&user).name("name").call().await?;
 
-    assert!(repo.get_top_ranked_card_groups(&user, now).await.is_ok());
+    assert!(repo.list_top_ranked_card_groups(&user, now).await.is_ok());
 
     let mut decks = vec![];
     let mut deck_cards = vec![];
@@ -260,10 +260,10 @@ async fn test_get_top_ranked_card_group() -> TestResult {
         info!(?item, "Created history item");
     }
 
-    let dcg = repo.get_top_ranked_card_groups(&user, now).await;
+    let dcg = repo.list_top_ranked_card_groups(&user, now).await;
     assert!(dcg.is_ok(), "{:?}", dcg);
 
-    let dc = repo.get_top_ranked_cards(&user, now).await;
+    let dc = repo.list_top_ranked_cards(&user, now).await;
     assert!(dc.is_ok(), "{:?}", dc);
 
     Ok(())

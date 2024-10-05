@@ -15,7 +15,7 @@ use teloxide::adaptors::DefaultParseMode;
 use teloxide::dispatching::dialogue::InMemStorage;
 use teloxide::Bot;
 use tokio::time::sleep;
-use tracing::{debug, Span};
+use tracing::{debug, info, Span};
 
 pub async fn init_notifier(
     bot: DefaultParseMode<Bot>,
@@ -27,7 +27,6 @@ pub async fn init_notifier(
 ) -> anyhow::Result<()> {
     loop {
         let now = Utc::now();
-        let past_3h = now.sub(TimeDelta::hours(3));
         let bindings = repositories.bindings.list_all().await?;
         debug!(bindings = bindings.len(), "Bindings");
 
@@ -64,45 +63,15 @@ pub async fn init_notifier(
                 continue;
             }
 
-            if now.second() % 2 == 0 {
-                let mut dcgs = repositories
-                    .decks
-                    .get_top_ranked_card_groups(user, past_3h.to_utc())
-                    .await?;
-                if dcgs.is_empty() {
-                    continue;
-                }
-                let card_id = rand::thread_rng().gen_range(0..dcgs.len());
-                let dcg = dcgs.swap_remove(card_id);
-                manager
-                    .update_state(BotState::Answering(StateFields::Answer {
-                        deck_card_group_id: Some(dcg.id),
-                        deck_card_group_card_seq: Some(0),
-                        deck_card_id: None,
-                        difficulty: None,
-                    }))
-                    .await?;
-                manager.send_card_group(dcg.card_group.as_ref()).await?;
-                manager.send_card(dcg.card_group.cards[0].as_ref()).await?;
+            let answered = if now.second() % 2 == 0 {
+                answer_with_card_group(&manager).await? || answer_with_card(&manager).await?
             } else {
-                let mut dcs = repositories
-                    .decks
-                    .get_top_ranked_cards(user, past_3h.to_utc())
-                    .await?;
-                if dcs.is_empty() {
-                    continue;
-                }
-                let id = rand::thread_rng().gen_range(0..dcs.len());
-                let dc = dcs.swap_remove(id);
-                manager
-                    .update_state(BotState::Answering(StateFields::Answer {
-                        deck_card_group_id: None,
-                        deck_card_group_card_seq: None,
-                        deck_card_id: Some(dc.id),
-                        difficulty: None,
-                    }))
-                    .await?;
-                manager.send_card(dc.card.as_ref()).await?
+                answer_with_card(&manager).await? || answer_with_card_group(&manager).await?
+            };
+
+            if !answered {
+                info!(%user, %chat_id, "No active cards or card groups");
+                continue;
             }
 
             manager.send_answer_menu().await?;
@@ -111,4 +80,67 @@ pub async fn init_notifier(
 
         sleep(Duration::from_secs(10)).await;
     }
+}
+
+async fn answer_with_card(manager: &ChatManager) -> anyhow::Result<bool> {
+    let user = manager.get_user();
+    let chat_id = manager.binding.get_chat_id()?;
+
+    let now = Utc::now();
+    let past_3h = now.sub(TimeDelta::hours(3));
+
+    let mut dcs = manager
+        .repositories
+        .decks
+        .list_top_ranked_cards(user, past_3h.to_utc())
+        .await?;
+    if dcs.is_empty() {
+        info!(%user, %chat_id, "No deck cards to display");
+        return Ok(false);
+    }
+    let id = rand::thread_rng().gen_range(0..dcs.len());
+    let dc = dcs.swap_remove(id);
+    manager
+        .update_state(BotState::Answering(StateFields::Answer {
+            deck_card_group_id: None,
+            deck_card_group_card_seq: None,
+            deck_card_id: Some(dc.id),
+            difficulty: None,
+        }))
+        .await?;
+    manager.send_card(dc.card.as_ref()).await?;
+
+    Ok(true)
+}
+
+async fn answer_with_card_group(manager: &ChatManager) -> anyhow::Result<bool> {
+    let now = Utc::now();
+    let past_3h = now.sub(TimeDelta::hours(3));
+
+    let user = manager.get_user();
+    let chat_id = manager.binding.get_chat_id()?;
+
+    let mut dcgs = manager
+        .repositories
+        .decks
+        .list_top_ranked_card_groups(user, past_3h.to_utc())
+        .await?;
+    if dcgs.is_empty() {
+        info!(%user, %chat_id, "No deck card groups to display");
+        return Ok(false);
+    }
+    let card_id = rand::thread_rng().gen_range(0..dcgs.len());
+    let dcg = dcgs.swap_remove(card_id);
+    manager
+        .update_state(BotState::Answering(StateFields::Answer {
+            deck_card_group_id: Some(dcg.id),
+            deck_card_group_card_seq: Some(0),
+            deck_card_id: None,
+            difficulty: None,
+        }))
+        .await?;
+    manager.send_card_group(dcg.card_group.as_ref()).await?;
+    manager.send_card(dcg.card_group.cards[0].as_ref()).await?;
+
+    Ok(true)
 }

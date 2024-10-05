@@ -36,7 +36,7 @@ async fn handle_hide_card(manager: ChatManager, duration: String) -> anyhow::Res
             return Ok(());
         }
     };
-    
+
     manager.commit_answer(0, Some(duration)).await?;
     handle_show_generic_menu::<RootCommand>(manager).await?;
     Ok(())
@@ -58,6 +58,8 @@ pub async fn handle_show_article(manager: ChatManager) -> anyhow::Result<()> {
         if let Some(code) = dcg.card_group.extract_str("commented_code") {
             manager.send_markdown_message(code).await?;
         }
+    } else {
+        manager.send_message("No article").await?;
     }
 
     manager.send_answer_menu().await?;

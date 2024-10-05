@@ -26,7 +26,8 @@ use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::utils::command::BotCommands;
 use teloxide::Bot;
 use tracing::{warn, Span};
-use flashcard_gpt_core::reexports::db::sql::Duration;
+use flashcard_gpt_core::dto::user::User;
+use flashcard_gpt_core::reexports::db::sql::{Duration, Thing};
 
 static DIGITS: [&str; 11] = [
     "0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟",
@@ -411,5 +412,13 @@ impl ChatManager {
         }
 
         bail!("No active deck card or deck card group in the state");
+    }
+    
+    pub fn get_user(&self) -> &User {
+        self.binding.user.as_ref()
+    }
+    
+    pub fn get_user_id(&self) -> &Thing {
+        &self.get_user().id
     }
 }

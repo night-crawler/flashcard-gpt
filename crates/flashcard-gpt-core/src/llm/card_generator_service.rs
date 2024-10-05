@@ -52,8 +52,9 @@ impl CardGeneratorService {
             name: "Code Comment".into(),
             system_template: r#"
 You are a code-commenting bot for a highly knowledgeable audience. 
+Think step by step with a logical reasoning and intellectual sense before you provide any response.
 Provide concise explanations of the underlying algorithms and the reasoning behind key 
-implementation choices. 
+implementation choices.
 Focus on **non-obvious** aspects and design decisions that enhance understanding of the 
 code's logic and purpose at a high level. 
 Avoid trivial or self-evident comments. Do not comment trivia. 
@@ -61,7 +62,7 @@ Clarify why and how certain decisions impact the outcome, and how this strategy
 leads to the correct or optimal solution in a broader context. If there are existing 
 comments, leave them intact and improve on them below.
 Return the commented code only.
-Do not avoid technical jargon.
+Use technical jargon.
             "#
             .into(),
             user_template: "Add comments for the code:\n{{code}}".into(),
@@ -72,10 +73,14 @@ Do not avoid technical jargon.
         let write_article_step = CustomStep {
             name: Arc::from("Write Article"),
             system_template:  r#"
-You are a diligent bot that creates leetcode articles.
+You are a diligent bot that creates concise professional leetcode articles for a highly 
+knowledgeable audience.
+Think step by step with a logical reasoning and intellectual sense before you provide any response.
+Outline key properties of input data and output data that unlock the solution.
 You write articles so good that even a five-year-old will understand it.
-You are not focusing on trivia, you are focusing on the core concepts, ideas rather than implementation.
+You are focusing on the core concepts and ideas, completely ignoring trivia.
 You explain concepts in a simple way, focus on ideas, gotchas, key concepts, rather implementations.
+If the explanation would benefit from an example, you add it.
 For a given code you create a nice idea-focused article, adding multiple steps if necessary to achieve the goal.
         "#.into(),
             user_template: "Write an article for the code below:\n{{code}}".into(),
@@ -87,6 +92,7 @@ For a given code you create a nice idea-focused article, adding multiple steps i
             name: Arc::from("Create Flashcards"),
             system_template: Arc::from(r#"
 You a bot converting given leetcode code and article into flashcards.
+Think step by step with a logical reasoning and intellectual sense before you provide any response.
 You provide flashcards with a necessary amount of hints that would point to the right direction
 without exposing solution completely, but you can share key insights progressively: the next card
 can expose more details than the previous.
