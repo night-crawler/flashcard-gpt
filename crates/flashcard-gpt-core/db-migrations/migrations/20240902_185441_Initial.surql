@@ -191,6 +191,7 @@ DEFINE FIELD data ON binding FLEXIBLE TYPE option<object> PERMISSIONS FULL;
 DEFINE FIELD time ON binding TYPE object DEFAULT {  } PERMISSIONS FULL;
 DEFINE FIELD time.created_at ON binding TYPE datetime DEFAULT time::now() VALUE $value OR $before OR time::now() PERMISSIONS FULL;
 DEFINE FIELD time.updated_at ON binding TYPE datetime DEFAULT time::now() VALUE $value OR time::now() PERMISSIONS FULL;
+DEFINE FIELD time.banned_bot_at ON binding TYPE option<datetime> DEFAULT NONE PERMISSIONS FULL;
 
 -- functions
 

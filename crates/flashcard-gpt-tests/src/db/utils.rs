@@ -1,3 +1,4 @@
+use flashcard_gpt_core::repo::binding::BindingRepo;
 use crate::db::{TestDbExt, TEST_DB};
 use bon::builder;
 use flashcard_gpt_core::dto::card::{CardDto, CreateCardDto};
@@ -40,6 +41,7 @@ create_repo_fn!(card);
 create_repo_fn!(card_group);
 create_repo_fn!(global_settings);
 create_repo_fn!(history);
+create_repo_fn!(binding);
 
 pub async fn create_user(name: &str) -> TestResult<User> {
     let repo = create_user_repo().await?;

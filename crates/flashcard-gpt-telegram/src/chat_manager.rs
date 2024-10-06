@@ -1,21 +1,28 @@
 use crate::command::answer::AnswerCommand;
 use crate::command::ext::CommandExt;
 use crate::db::repositories::Repositories;
+use crate::ext::binding::ChatIdExt;
 use crate::ext::card::ExtractValueExt;
 use crate::ext::markdown::MarkdownFormatter;
 use crate::ext::menu_repr::IteratorMenuReprExt;
 use crate::message_render::RenderMessageTextHelper;
 use crate::state::bot_state::{BotState, FlashGptDialogue};
 use crate::state::state_description::StateDescription;
+use crate::state::state_fields::StateFields;
 use anyhow::bail;
+use chrono::{TimeDelta, Utc};
 use flashcard_gpt_core::dto::binding::BindingDto;
 use flashcard_gpt_core::dto::card::CardDto;
 use flashcard_gpt_core::dto::card_group::CardGroupDto;
 use flashcard_gpt_core::dto::history::CreateHistoryDto;
 use flashcard_gpt_core::dto::tag::TagDto;
+use flashcard_gpt_core::dto::user::User;
 use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
+use flashcard_gpt_core::reexports::db::sql::{Duration, Thing};
 use itertools::Itertools;
+use rand::Rng;
 use std::fmt::Debug;
+use std::ops::Sub;
 use std::str::pattern::Pattern;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -25,9 +32,7 @@ use teloxide::prelude::{Message, Requester};
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::utils::command::BotCommands;
 use teloxide::Bot;
-use tracing::{warn, Span};
-use flashcard_gpt_core::dto::user::User;
-use flashcard_gpt_core::reexports::db::sql::{Duration, Thing};
+use tracing::{debug, warn, Span};
 
 static DIGITS: [&str; 11] = [
     "0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟",
@@ -379,7 +384,11 @@ impl ChatManager {
         bail!("Failed to split text {text}")
     }
 
-    pub async fn commit_answer(&self, difficulty: u8, hide_for: Option<Duration>) -> anyhow::Result<()> {
+    pub async fn commit_answer(
+        &self,
+        difficulty: u8,
+        hide_for: Option<Duration>,
+    ) -> anyhow::Result<()> {
         let fields = self.get_state().await?.into_fields();
         if let Some(Some(dcg_id)) = fields.deck_card_group_id() {
             self.repositories
@@ -413,12 +422,75 @@ impl ChatManager {
 
         bail!("No active deck card or deck card group in the state");
     }
-    
+
     pub fn get_user(&self) -> &User {
         self.binding.user.as_ref()
     }
-    
+
     pub fn get_user_id(&self) -> &Thing {
         &self.get_user().id
+    }
+}
+
+impl ChatManager {
+    pub async fn answer_with_card(&self) -> anyhow::Result<bool> {
+        let user = self.get_user();
+        let chat_id = self.binding.get_chat_id()?;
+
+        let now = Utc::now();
+        let past_3h = now.sub(TimeDelta::hours(3));
+
+        let mut dcs = self
+            .repositories
+            .decks
+            .list_top_ranked_cards(user, past_3h.to_utc())
+            .await?;
+        if dcs.is_empty() {
+            debug!(%user, %chat_id, "No deck cards to display");
+            return Ok(false);
+        }
+        let id = rand::thread_rng().gen_range(0..dcs.len());
+        let dc = dcs.swap_remove(id);
+        self.update_state(BotState::Answering(StateFields::Answer {
+            deck_card_group_id: None,
+            deck_card_group_card_seq: None,
+            deck_card_id: Some(dc.id),
+            difficulty: None,
+        }))
+        .await?;
+        self.send_card(dc.card.as_ref()).await?;
+
+        Ok(true)
+    }
+
+    pub async fn answer_with_card_group(&self) -> anyhow::Result<bool> {
+        let now = Utc::now();
+        let past_3h = now.sub(TimeDelta::hours(3));
+
+        let user = self.get_user();
+        let chat_id = self.binding.get_chat_id()?;
+
+        let mut dcgs = self
+            .repositories
+            .decks
+            .list_top_ranked_card_groups(user, past_3h.to_utc())
+            .await?;
+        if dcgs.is_empty() {
+            debug!(%user, %chat_id, "No deck card groups to display");
+            return Ok(false);
+        }
+        let card_id = rand::thread_rng().gen_range(0..dcgs.len());
+        let dcg = dcgs.swap_remove(card_id);
+        self.update_state(BotState::Answering(StateFields::Answer {
+            deck_card_group_id: Some(dcg.id),
+            deck_card_group_card_seq: Some(0),
+            deck_card_id: None,
+            difficulty: None,
+        }))
+        .await?;
+        self.send_card_group(dcg.card_group.as_ref()).await?;
+        self.send_card(dcg.card_group.cards[0].as_ref()).await?;
+
+        Ok(true)
     }
 }

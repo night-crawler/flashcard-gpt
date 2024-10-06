@@ -35,6 +35,6 @@ impl From<&User> for Thing {
 
 impl Display for User {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "#{} {}", self.id, self.email)
+        write!(f, "#{} {}", self.id, self.name)
     }
 }

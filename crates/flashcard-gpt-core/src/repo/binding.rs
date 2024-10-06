@@ -2,9 +2,10 @@ use crate::dto::binding::{BindingDto, GetOrCreateBindingDto};
 use crate::error::CoreError;
 use crate::ext::response_ext::ResponseExt;
 use crate::repo::generic_repo::GenericRepo;
-use crate::single_object_query;
+use crate::{multi_object_query, single_object_query};
 use std::sync::Arc;
 use surrealdb::engine::remote::ws::Client;
+use surrealdb::sql::Thing;
 use surrealdb::Surreal;
 use tracing::Span;
 
@@ -12,6 +13,30 @@ pub type BindingRepo = GenericRepo<GetOrCreateBindingDto, BindingDto, ()>;
 impl BindingRepo {
     pub fn new_binding(db: Surreal<Client>, span: Span, enable_transactions: bool) -> Self {
         Self::new(db, span, "binding", "", "user", enable_transactions)
+    }
+    
+    pub async fn set_banned(&self, pk: impl Into<Thing>) -> Result<BindingDto, CoreError> {
+        let query = r#"
+        update $pk set time.banned_bot_at = time::now();
+        select * from binding where id=$pk fetch user;
+        "#;
+        single_object_query!(self.db, query, ("pk", pk.into()))
+    }
+
+    pub async fn list_all_not_banned(&self) -> Result<Vec<BindingDto>, CoreError> {
+        let query = format!(
+            r#"
+            select * {additional_query} 
+            from {table_name}
+            where time.banned_bot_at = none
+            {fetch}
+            "#,
+            table_name = self.table_name,
+            fetch = self.fetch_statement(),
+            additional_query = self.additional_query
+        );
+
+        multi_object_query!(self.db, &query,)
     }
 
     #[tracing::instrument(level = "debug", skip_all, parent = self.span.clone(), err, fields(source_id)
