@@ -16,6 +16,7 @@ mod notifier_task;
 pub mod schema;
 pub mod state;
 
+use crate::command::all_commands;
 use crate::db::repositories::Repositories;
 use crate::ext::markdown::MarkdownFormatter;
 use crate::notifier_task::init_notifier;
@@ -58,6 +59,12 @@ fn init_card_generator_service(
     ))
 }
 
+async fn set_bot_commands(bot: &DefaultParseMode<Bot>) {
+    if let Err(err) = bot.set_my_commands(all_commands()).await {
+        warn!(?err, "Failed to set bot commands");
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     init_tracing()?;
@@ -87,6 +94,7 @@ async fn main() -> anyhow::Result<()> {
     let span = span!(Level::INFO, "root");
 
     let bot: DefaultParseMode<Bot> = Bot::from_env().parse_mode(ParseMode::Html);
+    set_bot_commands(&bot).await;
     let state: Arc<InMemStorage<BotState>> = InMemStorage::<BotState>::new();
 
     let notifier = init_notifier(

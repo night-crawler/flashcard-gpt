@@ -69,13 +69,15 @@ async fn handle_start(manager: ChatManager) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(level = "info", skip_all, parent = &manager.span, err, fields(
+        chat_id = ?manager.dialogue.chat_id(),
+    ))]
 pub async fn handle_show_generic_menu<T>(manager: ChatManager) -> anyhow::Result<()>
 where
     T: BotCommands + CommandExt,
 {
-    manager.send_menu::<T>().await?;
-    manager.set_my_commands::<T>().await?;
     manager.set_menu_state::<T>().await?;
+    manager.send_menu::<T>().await?;
     Ok(())
 }
 
@@ -106,6 +108,8 @@ pub(super) async fn receive_root_menu_item(
         bot.edit_message_text_inline(id, format!("You chose: {menu_item}"))
             .await?;
     }
+
+    let user = manager.get_user();
 
     info!(?state, menu_item, "Received a menu item");
 
@@ -231,7 +235,7 @@ pub(super) async fn receive_root_menu_item(
                 AnswerCommand::Skip => handle_skip_answer(manager).await?,
                 AnswerCommand::Hide(duration) => {
                     warn!(%duration, "Received an impossible state from menu item");
-                },
+                }
             }
         }
         (Some(BotState::Answering(_)), item) if let Ok(difficulty) = item.parse::<u8>() => {
@@ -243,7 +247,7 @@ pub(super) async fn receive_root_menu_item(
             generate_cards(manager).await?;
         }
         (state, item) => {
-            warn!(?state, %item, "No handler for");
+            warn!(?state, %item, %user, "No handler for");
         }
     }
 

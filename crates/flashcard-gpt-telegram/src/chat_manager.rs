@@ -70,6 +70,9 @@ impl ChatManager {
 
         let mut last_message = None;
         for chunk in Self::split_html(&text)? {
+            if chunk.trim().is_empty() {
+                continue;
+            }
             last_message = self
                 .bot
                 .send_message(self.dialogue.chat_id(), chunk)
@@ -256,14 +259,6 @@ impl ChatManager {
         T: CommandExt,
     {
         self.dialogue.update(T::get_corresponding_state()).await?;
-        Ok(())
-    }
-
-    pub async fn set_my_commands<T>(&self) -> anyhow::Result<()>
-    where
-        T: BotCommands,
-    {
-        self.bot.set_my_commands(T::bot_commands()).await?;
         Ok(())
     }
 

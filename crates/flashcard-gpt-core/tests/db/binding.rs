@@ -22,7 +22,7 @@ async fn test_get_or_create_binding() -> TestResult {
     };
     let binding = repo.get_or_create_binding(dto).await?;
     assert_eq!(binding.source_id.as_ref(), "source_id");
-    
+
     let banned = repo.set_banned(&binding).await?;
     println!("{:?}", banned);
 

@@ -14,7 +14,7 @@ impl BindingRepo {
     pub fn new_binding(db: Surreal<Client>, span: Span, enable_transactions: bool) -> Self {
         Self::new(db, span, "binding", "", "user", enable_transactions)
     }
-    
+
     pub async fn set_banned(&self, pk: impl Into<Thing>) -> Result<BindingDto, CoreError> {
         let query = r#"
         update $pk set time.banned_bot_at = time::now();

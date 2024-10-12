@@ -8,14 +8,7 @@ pub type GlobalSettingsRepo = GenericRepo<CreateGlobalSettingsDto, GlobalSetting
 
 impl GlobalSettingsRepo {
     pub fn new_global_settings(db: Surreal<Client>, span: Span, enable_transactions: bool) -> Self {
-        Self::new(
-            db,
-            span,
-            "global_settings",
-            "",
-            "user",
-            enable_transactions,
-        )
+        Self::new(db, span, "global_settings", "", "user", enable_transactions)
     }
 
     // duplicate create method with custom serializer in the query

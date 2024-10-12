@@ -4,11 +4,11 @@ use crate::command::root::RootCommand;
 use crate::ext::card::ExtractValueExt;
 use crate::schema::root::handle_show_generic_menu;
 use crate::state::bot_state::BotState;
+use flashcard_gpt_core::reexports::db::syn;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Update};
 use tracing::info;
-use flashcard_gpt_core::reexports::db::syn;
 
 pub fn answering_schema(
 ) -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
@@ -32,7 +32,9 @@ async fn handle_hide_card(manager: ChatManager, duration: String) -> anyhow::Res
     let duration = match syn::duration(&duration) {
         Ok(duration) => duration,
         Err(err) => {
-            manager.send_message(format!("Failed to parse duration `{duration}`: {err}")).await?;
+            manager
+                .send_message(format!("Failed to parse duration `{duration}`: {err}"))
+                .await?;
             return Ok(());
         }
     };

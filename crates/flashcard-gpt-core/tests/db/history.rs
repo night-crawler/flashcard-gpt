@@ -1,4 +1,3 @@
-use surrealdb::sql::Duration;
 use flashcard_gpt_core::dto::deck_card::CreateDeckCardDto;
 use flashcard_gpt_core::dto::deck_card_group::CreateDeckCardGroupDto;
 use flashcard_gpt_core::dto::history::CreateHistoryDto;
@@ -7,6 +6,7 @@ use flashcard_gpt_tests::db::utils::{
     create_card, create_card_group, create_deck, create_deck_repo, create_history_repo, create_tag,
     create_user,
 };
+use surrealdb::sql::Duration;
 use testresult::TestResult;
 
 #[tokio::test]

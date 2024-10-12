@@ -1,10 +1,9 @@
 use crate::chat_manager::ChatManager;
-use crate::command::answer::AnswerCommand;
 use crate::db::repositories::Repositories;
 use crate::ext::binding::ChatIdExt;
 use crate::ext::markdown::MarkdownFormatter;
 use crate::state::bot_state::{BotState, FlashGptDialogue};
-use chrono::{ Timelike, Utc};
+use chrono::{Timelike, Utc};
 use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
 use std::sync::Arc;
 use std::time::Duration;
@@ -63,19 +62,24 @@ pub async fn init_notifier(
             let answered = match answer(&manager).await {
                 Ok(answered) => answered,
                 Err(err) => {
-                    if let Some(RequestError::Api(ApiError::BotBlocked)) = err.downcast_ref::<RequestError>() {
+                    if let Some(RequestError::Api(ApiError::BotBlocked)) =
+                        err.downcast_ref::<RequestError>()
+                    {
                         warn!(%user, "Bot blocked by user");
-                        manager.repositories.bindings.set_banned(binding.id.clone()).await?;
+                        manager
+                            .repositories
+                            .bindings
+                            .set_banned(binding.id.clone())
+                            .await?;
                     }
                     false
                 }
             };
-          
+
             if !answered {
                 debug!(%user, %chat_id, "No active cards or card groups");
                 continue;
             }
-            
         }
 
         sleep(Duration::from_secs(10)).await;
@@ -84,7 +88,7 @@ pub async fn init_notifier(
 
 async fn answer(manager: &ChatManager) -> anyhow::Result<bool> {
     let now = Utc::now();
-    
+
     let answered = if now.second() % 2 == 0 {
         manager.answer_with_card_group().await? || manager.answer_with_card().await?
     } else {
@@ -92,8 +96,6 @@ async fn answer(manager: &ChatManager) -> anyhow::Result<bool> {
     };
 
     manager.send_answer_menu().await?;
-    manager.set_my_commands::<AnswerCommand>().await?;
-    
+
     Ok(answered)
 }
-

@@ -10,13 +10,13 @@ use teloxide::types::InlineKeyboardButton;
 #[command(rename_rule = "lowercase")]
 pub enum UserCommand {
     /// Edit username
-    EditUsername,
+    Username,
 
     /// Edit email
-    EditEmail,
+    Email,
 
     /// Edit password
-    EditPassword,
+    Password,
 
     /// Cancel the current operation
     Cancel,

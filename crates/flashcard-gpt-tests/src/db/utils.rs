@@ -1,4 +1,3 @@
-use flashcard_gpt_core::repo::binding::BindingRepo;
 use crate::db::{TestDbExt, TEST_DB};
 use bon::builder;
 use flashcard_gpt_core::dto::card::{CardDto, CreateCardDto};
@@ -6,6 +5,7 @@ use flashcard_gpt_core::dto::card_group::{CardGroupDto, CreateCardGroupDto};
 use flashcard_gpt_core::dto::deck::{CreateDeckDto, DeckDto, DeckSettings};
 use flashcard_gpt_core::dto::tag::{CreateTagDto, TagDto};
 use flashcard_gpt_core::dto::user::{RegisterUserDto, User};
+use flashcard_gpt_core::repo::binding::BindingRepo;
 use flashcard_gpt_core::repo::card::CardRepo;
 use flashcard_gpt_core::repo::card_group::CardGroupRepo;
 use flashcard_gpt_core::repo::deck::DeckRepo;

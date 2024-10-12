@@ -1376,7 +1376,7 @@ dependencies = [
 [[package]]
 name = "dumb_html_splitter"
 version = "0.1.0"
-source = "git+https://github.com/night-crawler/dumb_html_splitter#2c77e5bea23849d660a970a4a7bf62819a73e269"
+source = "git+https://github.com/night-crawler/dumb_html_splitter#d91c120e7c7f3b33933bd5558772b50eded7fad2"
 
 [[package]]
 name = "earcutr"
