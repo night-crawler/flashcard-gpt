@@ -9,7 +9,7 @@ repository.workspace = true
 
 [dependencies]
 surrealdb = { workspace = true }
-testcontainers = "0.22"
+testcontainers = "0.23"
 testresult = "0.4"
 ctor = "0.2"
 flashcard-gpt-core = { path = "../flashcard-gpt-core" }

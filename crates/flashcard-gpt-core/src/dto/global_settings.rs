@@ -61,7 +61,6 @@ impl From<&GlobalSettingsDto> for Thing {
 mod tests {
     use super::*;
     use chrono_tz::Tz;
-    use serde_json;
     use std::sync::Arc;
     use testresult::TestResult;
 
