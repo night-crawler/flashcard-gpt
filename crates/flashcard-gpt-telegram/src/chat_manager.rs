@@ -3,6 +3,7 @@ use crate::command::ext::CommandExt;
 use crate::db::repositories::Repositories;
 use crate::ext::binding::ChatIdExt;
 use crate::ext::card::ExtractValueExt;
+use crate::ext::json_value::ValueExt;
 use crate::ext::markdown::MarkdownFormatter;
 use crate::ext::menu_repr::IteratorMenuReprExt;
 use crate::message_render::RenderMessageTextHelper;
@@ -12,8 +13,8 @@ use crate::state::state_fields::StateFields;
 use anyhow::bail;
 use chrono::{TimeDelta, Utc};
 use flashcard_gpt_core::dto::binding::BindingDto;
-use flashcard_gpt_core::dto::card::CardDto;
-use flashcard_gpt_core::dto::card_group::CardGroupDto;
+use flashcard_gpt_core::dto::card::{CardDto, UpdateCardDto};
+use flashcard_gpt_core::dto::card_group::{CardGroupDto, UpdateCardGroupDto};
 use flashcard_gpt_core::dto::history::CreateHistoryDto;
 use flashcard_gpt_core::dto::tag::TagDto;
 use flashcard_gpt_core::dto::user::User;
@@ -40,7 +41,7 @@ static DIGITS: [&str; 11] = [
 
 #[derive(Debug, Clone)]
 pub struct ChatManager {
-    pub repositories: Repositories,
+    pub repo: Repositories,
     pub generator: CardGeneratorService,
     pub formatter: MarkdownFormatter,
     pub binding: Arc<BindingDto>,
@@ -121,7 +122,7 @@ impl ChatManager {
     pub async fn send_tag_menu(&self) -> anyhow::Result<()> {
         let desc = self.get_description().await?;
         let tag_menu = self
-            .repositories
+            .repo
             .build_tag_menu(self.binding.user.id.clone())
             .await?;
 
@@ -141,7 +142,7 @@ impl ChatManager {
     pub async fn send_deck_menu(&self) -> anyhow::Result<()> {
         let desc = self.get_description().await?;
         let tag_menu = self
-            .repositories
+            .repo
             .build_deck_menu(self.binding.user.id.clone())
             .await?;
 
@@ -386,7 +387,7 @@ impl ChatManager {
     ) -> anyhow::Result<()> {
         let fields = self.get_state().await?.into_fields();
         if let Some(Some(dcg_id)) = fields.deck_card_group_id() {
-            self.repositories
+            self.repo
                 .history
                 .create_custom(CreateHistoryDto {
                     user: self.binding.user.id.clone(),
@@ -401,7 +402,7 @@ impl ChatManager {
         }
 
         if let Some(Some(dc_id)) = fields.deck_card_id() {
-            self.repositories
+            self.repo
                 .history
                 .create_custom(CreateHistoryDto {
                     user: self.binding.user.id.clone(),
@@ -436,7 +437,7 @@ impl ChatManager {
         let past_3h = now.sub(TimeDelta::hours(3));
 
         let mut dcs = self
-            .repositories
+            .repo
             .decks
             .list_top_ranked_cards(user, past_3h.to_utc())
             .await?;
@@ -466,7 +467,7 @@ impl ChatManager {
         let chat_id = self.binding.get_chat_id()?;
 
         let mut dcgs = self
-            .repositories
+            .repo
             .decks
             .list_top_ranked_card_groups(user, past_3h.to_utc())
             .await?;
@@ -487,5 +488,89 @@ impl ChatManager {
         self.send_card(dcg.card_group.cards[0].as_ref()).await?;
 
         Ok(true)
+    }
+
+    pub async fn send_card_group_data_by_key(
+        &self,
+        id: &Thing,
+        key: impl AsRef<str>,
+    ) -> anyhow::Result<()> {
+        let key = key.as_ref();
+
+        let data = match id.tb.as_str() {
+            "deck_card_group" => self
+                .repo
+                .decks
+                .get_deck_card_group(id.clone())
+                .await?
+                .card_group
+                .data
+                .clone(),
+            "deck_card" => self
+                .repo
+                .decks
+                .get_deck_card(id.clone())
+                .await?
+                .card
+                .data
+                .clone(),
+            _ => {
+                bail!("Provided an unsupported id: {id}")
+            }
+        };
+
+        let Some(data) = data else {
+            warn!(?id, "No data found");
+            self.send_message("No data in the data field in this Card or Card Group".to_string())
+                .await?;
+            return Ok(());
+        };
+
+        let Some(value) = data.get_value_by(key) else {
+            self.send_message(format!("Card group data does not contain key {key}"))
+                .await?;
+            return Ok(());
+        };
+
+        let Some(value) = value.as_str() else {
+            self.send_message("Cannot represent the given data value as string")
+                .await?;
+            return Ok(());
+        };
+
+        self.send_markdown_message(value).await?;
+
+        Ok(())
+    }
+
+    pub async fn update_deck_card_group_inner(
+        &self,
+        dcg_id: impl Into<Thing>,
+        update_card_group_dto: UpdateCardGroupDto,
+    ) -> anyhow::Result<CardGroupDto> {
+        let cg_id = self
+            .repo
+            .decks
+            .get_deck_card_group(dcg_id)
+            .await?
+            .card_group
+            .id
+            .clone();
+        let cg = self
+            .repo
+            .card_groups
+            .patch(cg_id, update_card_group_dto)
+            .await?;
+        Ok(cg)
+    }
+
+    pub async fn update_deck_card_inner(
+        self,
+        dc_id: impl Into<Thing>,
+        update_card_dto: UpdateCardDto,
+    ) -> anyhow::Result<CardDto> {
+        let card_id = self.repo.decks.get_deck_card(dc_id).await?.card.id.clone();
+        let cg = self.repo.cards.patch(card_id, update_card_dto).await?;
+        Ok(cg)
     }
 }

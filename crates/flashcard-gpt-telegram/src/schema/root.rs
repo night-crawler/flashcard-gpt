@@ -163,6 +163,9 @@ pub(super) async fn receive_root_menu_item(
                 DeckCommand::Create => {
                     handle_create_deck(manager).await?;
                 }
+                DeckCommand::Cancel => {
+                    cancel(manager).await?;
+                }
                 _ => {
                     bot.send_message(dialogue.chat_id(), "Not implemented yet")
                         .await?;
@@ -233,6 +236,8 @@ pub(super) async fn receive_root_menu_item(
                 AnswerCommand::Next => handle_show_next_card(manager).await?,
                 AnswerCommand::Cancel => handle_cancel_answer(manager).await?,
                 AnswerCommand::Skip => handle_skip_answer(manager).await?,
+                AnswerCommand::Importance(_) => {}
+                AnswerCommand::Difficulty(_) => {}
                 AnswerCommand::Hide(duration) => {
                     warn!(%duration, "Received an impossible state from menu item");
                 }

@@ -1,4 +1,4 @@
-use flashcard_gpt_core::dto::card::CreateCardDto;
+use flashcard_gpt_core::dto::card::{CreateCardDto, UpdateCardDto};
 use flashcard_gpt_core::repo::card::CardRepo;
 use flashcard_gpt_core::repo::tag::TagRepo;
 use flashcard_gpt_tests::db::utils::{create_card, create_tag, create_user};
@@ -71,6 +71,44 @@ async fn test_deserialize_after_tag_deletion() -> TestResult {
 
     let card = repo.get_by_id(card.id).await?;
     assert!(card.tags.is_empty());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_patch_card() -> TestResult {
+    let db = TEST_DB.get_client().await?;
+    let repo = CardRepo::new_card(db, span!(Level::INFO, "patch_card"), true);
+    let user = create_user("patch_card").await?;
+
+    let card = CreateCardDto {
+        user: user.id,
+        title: Arc::from("title"),
+        front: Some(Arc::from("a")),
+        back: Some(Arc::from("b")),
+        data: Some(Arc::from(json!({
+            "a": "b"
+        }))),
+        hints: vec![Arc::from("a")],
+        difficulty: 3,
+        importance: 2,
+        tags: Default::default(),
+    };
+
+    let card = repo.create(card).await?;
+
+    let card = repo
+        .patch(
+            card.id.clone(),
+            UpdateCardDto {
+                importance: Some(6),
+                difficulty: Some(7),
+            },
+        )
+        .await?;
+
+    assert_eq!(card.importance, 6);
+    assert_eq!(card.difficulty, 7);
 
     Ok(())
 }

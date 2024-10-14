@@ -18,6 +18,13 @@ pub enum AnswerCommand {
 
     /// Hide current card for a specified amount of time (user 3h30m20s or 1w)
     Hide(String),
+
+    /// Set difficulty for this card / card group
+    Difficulty(u8),
+
+    /// Set importance for this card / card group
+    Importance(u8),
+
     /// Cancel answering
     Cancel,
 }
@@ -26,6 +33,8 @@ impl CommandExt for AnswerCommand {
     fn get_menu_items() -> impl Iterator<Item = InlineKeyboardButton> {
         AnswerCommand::iter()
             .filter(|cmd| !matches!(cmd, AnswerCommand::Hide(_)))
+            .filter(|cmd| !matches!(cmd, AnswerCommand::Difficulty(_)))
+            .filter(|cmd| !matches!(cmd, AnswerCommand::Importance(_)))
             .map(|cmd| InlineKeyboardButton::callback(cmd.as_ref(), cmd.as_ref()))
     }
 

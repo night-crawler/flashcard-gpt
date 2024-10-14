@@ -38,3 +38,9 @@ pub struct CreateCardGroupDto {
     pub cards: Vec<Thing>,
     pub tags: Vec<Thing>,
 }
+
+#[derive(Debug, Serialize, Deserialize, Builder)]
+pub struct UpdateCardGroupDto {
+    pub importance: Option<u8>,
+    pub difficulty: Option<u8>,
+}

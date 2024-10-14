@@ -170,4 +170,27 @@ where
             format!("fetch {}", self.fetch)
         }
     }
+
+    pub async fn patch(&self, id: impl Into<Thing>, update_dto: Update) -> Result<Read, CoreError> {
+        let id = id.into();
+        let query = format!(
+            r#"
+            let $patches = $dto
+                .entries()
+                .filter(|$entry| $entry[1] != None)
+                .map(|$entry| {{
+                    op: "replace",
+                    path: '/' + $entry[0],
+                    value: $entry[1]
+                }});
+            
+            update $id patch $patches;
+            select * {additional_query} from $id {fetch};
+            "#,
+            additional_query = self.additional_query,
+            fetch = self.fetch_statement()
+        );
+
+        single_object_query!(self.db, &query, ("dto", update_dto), ("id", id))
+    }
 }

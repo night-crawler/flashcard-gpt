@@ -43,7 +43,7 @@ pub async fn init_notifier(
             let dialogue = FlashGptDialogue::new(storage.clone(), chat_id);
 
             let manager = ChatManager {
-                repositories: repositories.clone(),
+                repo: repositories.clone(),
                 generator,
                 formatter: formatter.clone(),
                 binding: binding.clone(),
@@ -66,11 +66,7 @@ pub async fn init_notifier(
                         err.downcast_ref::<RequestError>()
                     {
                         warn!(%user, "Bot blocked by user");
-                        manager
-                            .repositories
-                            .bindings
-                            .set_banned(binding.id.clone())
-                            .await?;
+                        manager.repo.bindings.set_banned(binding.id.clone()).await?;
                     }
                     false
                 }

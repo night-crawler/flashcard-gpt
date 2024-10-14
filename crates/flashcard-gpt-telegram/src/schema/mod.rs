@@ -60,7 +60,7 @@ fn init_chat_manager(
     };
 
     ChatManager {
-        repositories,
+        repo: repositories,
         binding,
         bot,
         dialogue,

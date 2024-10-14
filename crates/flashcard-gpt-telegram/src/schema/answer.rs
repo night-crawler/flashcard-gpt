@@ -1,9 +1,11 @@
 use crate::chat_manager::ChatManager;
 use crate::command::answer::AnswerCommand;
 use crate::command::root::RootCommand;
-use crate::ext::card::ExtractValueExt;
 use crate::schema::root::handle_show_generic_menu;
 use crate::state::bot_state::BotState;
+use anyhow::bail;
+use flashcard_gpt_core::dto::card::UpdateCardDto;
+use flashcard_gpt_core::dto::card_group::UpdateCardGroupDto;
 use flashcard_gpt_core::reexports::db::syn;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
@@ -18,6 +20,8 @@ pub fn answering_schema(
             .branch(case![AnswerCommand::Skip].endpoint(handle_skip_answer))
             .branch(case![AnswerCommand::Next].endpoint(handle_show_next_card))
             .branch(case![AnswerCommand::Hide(hide_time)].endpoint(handle_hide_card))
+            .branch(case![AnswerCommand::Difficulty(difficulty)].endpoint(handle_set_difficulty))
+            .branch(case![AnswerCommand::Importance(importance)].endpoint(handle_set_importance))
             .branch(case![AnswerCommand::Cancel].endpoint(handle_cancel_answer)),
     );
 
@@ -44,26 +48,67 @@ async fn handle_hide_card(manager: ChatManager, duration: String) -> anyhow::Res
     Ok(())
 }
 
-pub async fn handle_show_article(manager: ChatManager) -> anyhow::Result<()> {
-    info!("handle_article");
+async fn handle_set_difficulty(manager: ChatManager, difficulty: u8) -> anyhow::Result<()> {
     let fields = manager.get_state().await?.into_fields();
-
-    if let Some(Some(dcg_id)) = fields.deck_card_group_id()
-        && let dcg = manager
-            .repositories
-            .decks
-            .get_deck_card_group(dcg_id.clone())
-            .await?
-        && let Some(article) = dcg.card_group.extract_str("article")
-    {
-        manager.send_markdown_message(article).await?;
-        if let Some(code) = dcg.card_group.extract_str("commented_code") {
-            manager.send_markdown_message(code).await?;
-        }
-    } else {
-        manager.send_message("No article").await?;
+    if let Some(Some(dcg_id)) = fields.deck_card_group_id() {
+        manager
+            .update_deck_card_group_inner(
+                dcg_id.clone(),
+                UpdateCardGroupDto::builder().difficulty(difficulty).build(),
+            )
+            .await?;
     }
 
+    if let Some(Some(dc_id)) = fields.deck_card_id() {
+        manager
+            .update_deck_card_inner(
+                dc_id.clone(),
+                UpdateCardDto::builder().difficulty(difficulty).build(),
+            )
+            .await?;
+    }
+
+    Ok(())
+}
+
+async fn handle_set_importance(manager: ChatManager, importance: u8) -> anyhow::Result<()> {
+    let fields = manager.get_state().await?.into_fields();
+    if let Some(Some(dcg_id)) = fields.deck_card_group_id() {
+        manager
+            .update_deck_card_group_inner(
+                dcg_id.clone(),
+                UpdateCardGroupDto::builder().importance(importance).build(),
+            )
+            .await?;
+    }
+
+    if let Some(Some(dc_id)) = fields.deck_card_id() {
+        manager
+            .update_deck_card_inner(
+                dc_id.clone(),
+                UpdateCardDto::builder().importance(importance).build(),
+            )
+            .await?;
+    }
+
+    Ok(())
+}
+
+pub async fn handle_show_article(manager: ChatManager) -> anyhow::Result<()> {
+    let state = manager.get_state().await?;
+    let fields = state.as_fields();
+
+    let Some(Some(pk)) = fields
+        .deck_card_group_id()
+        .or_else(|| fields.deck_card_id())
+    else {
+        bail!("State has no active deck card / card group: {state:?}");
+    };
+
+    manager.send_card_group_data_by_key(pk, "article").await?;
+    manager
+        .send_card_group_data_by_key(pk, "commented_code")
+        .await?;
     manager.send_answer_menu().await?;
 
     Ok(())
@@ -99,7 +144,7 @@ pub async fn handle_show_next_card(manager: ChatManager) -> anyhow::Result<()> {
     };
 
     let deck_card_group = manager
-        .repositories
+        .repo
         .decks
         .get_deck_card_group(dcg_id.clone())
         .await?;

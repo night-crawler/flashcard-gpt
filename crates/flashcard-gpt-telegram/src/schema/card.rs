@@ -16,7 +16,7 @@ use std::sync::Arc;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
 use teloxide::prelude::{DependencyMap, Update};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 pub fn card_schema() -> Handler<'static, DependencyMap, anyhow::Result<()>, DpHandlerDescription> {
     let card_command_handler = teloxide::filter_command::<CardCommand, _>().branch(
@@ -245,7 +245,7 @@ async fn create_card(manager: ChatManager) -> anyhow::Result<()> {
     let user = &manager.binding.user;
 
     let tags = manager
-        .repositories
+        .repo
         .tags
         .get_or_create_tags(user.as_ref(), tags)
         .await?
@@ -256,7 +256,7 @@ async fn create_card(manager: ChatManager) -> anyhow::Result<()> {
     let title = title.ok_or_else(|| anyhow!("Title was not provided"))?;
 
     let card = manager
-        .repositories
+        .repo
         .cards
         .create(CreateCardDto {
             user: user.id.clone(),
@@ -277,7 +277,7 @@ async fn create_card(manager: ChatManager) -> anyhow::Result<()> {
 
     if let Some(deck) = deck {
         let rel = manager
-            .repositories
+            .repo
             .decks
             .relate_card(CreateDeckCardDto {
                 deck: deck.as_thing()?,
@@ -351,15 +351,15 @@ pub async fn generate_cards(manager: ChatManager) -> anyhow::Result<()> {
     if let Some(data) = gpt_card_group.data.as_mut()
         && let Value::Object(map) = data
     {
-        map.insert("prompt".into(), Value::String(prompt.to_string()));
-        if let Some(article) = params.get("article") {
-            map.insert("article".into(), Value::String(article.to_string()));
-        }
-        if let Some(commented_code) = params.get("commented_code") {
-            map.insert(
-                "commented_code".into(),
-                Value::String(commented_code.to_string()),
-            );
+        for (param, value) in params {
+            if let Some(prev) = map.insert(param.to_string(), Value::String(value.to_string())) {
+                warn!(
+                    ?prev,
+                    ?param,
+                    ?value,
+                    "Replaced an existing param in card group data map"
+                );
+            }
         }
     }
 
@@ -374,6 +374,13 @@ pub async fn generate_cards(manager: ChatManager) -> anyhow::Result<()> {
     for card in deck_card_group.card_group.cards.iter() {
         manager.send_card(card.as_ref()).await?;
     }
+
+    manager
+        .send_card_group_data_by_key(&deck_card_group.id, "article")
+        .await?;
+    manager
+        .send_card_group_data_by_key(&deck_card_group.id, "commented_code")
+        .await?;
 
     handle_show_generic_menu::<CardCommand>(manager).await?;
 

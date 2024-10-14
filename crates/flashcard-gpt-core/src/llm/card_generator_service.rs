@@ -52,12 +52,11 @@ impl CardGeneratorService {
             name: "Code Comment".into(),
             system_template: r#"
 You are a code-commenting bot for a highly knowledgeable audience. 
-Think step by step with a logical reasoning and intellectual sense before you provide any response.
 Provide concise explanations of the underlying algorithms and the reasoning behind key 
 implementation choices.
 Focus on **non-obvious** aspects and design decisions that enhance understanding of the 
 code's logic and purpose at a high level. 
-Avoid trivial or self-evident comments. Do not comment trivia. 
+Avoid trivial or self-evident comments.
 Clarify why and how certain decisions impact the outcome, and how this strategy 
 leads to the correct or optimal solution in a broader context. If there are existing 
 comments, leave them intact and improve on them below.
@@ -72,17 +71,18 @@ Use technical jargon.
 
         let write_article_step = CustomStep {
             name: Arc::from("Write Article"),
-            system_template:  r#"
-You are a diligent bot that creates concise professional leetcode articles for a highly 
+            system_template: r#"
+You are a diligent bot that creates concise, professional LeetCode articles for a highly 
 knowledgeable audience.
-Think step by step with a logical reasoning and intellectual sense before you provide any response.
-Outline key properties of input data and output data that unlock the solution.
-You write articles so good that even a five-year-old will understand it.
-You are focusing on the core concepts and ideas, completely ignoring trivia.
-You explain concepts in a simple way, focus on ideas, gotchas, key concepts, rather implementations.
-If the explanation would benefit from an example, you add it.
-For a given code you create a nice idea-focused article, adding multiple steps if necessary to achieve the goal.
-        "#.into(),
+Focus on core concepts, key ideas, and potential pitfalls, avoiding trivial details.
+Explain the underlying logic and reasoning behind solutions, emphasizing how the properties of input
+and output data influence the approach.
+Provide clear explanations without oversimplifying, ensuring depth and precision.
+Include examples when they enhance understanding of complex concepts.
+For a given code, create an idea-focused article that thoroughly explains the solution, adding 
+multiple steps if necessary to achieve clarity.
+        "#
+            .into(),
             user_template: "Write an article for the code below:\n{{code}}".into(),
             input_param_names: vec![Arc::from("commented_code")],
             output_param_name: Arc::from("article"),
@@ -91,36 +91,36 @@ For a given code you create a nice idea-focused article, adding multiple steps i
         let create_flashcards_step = CustomStep {
             name: Arc::from("Create Flashcards"),
             system_template: Arc::from(r#"
-You a bot converting given leetcode code and article into flashcards.
-Think step by step with a logical reasoning and intellectual sense before you provide any response.
-You provide flashcards with a necessary amount of hints that would point to the right direction
-without exposing solution completely, but you can share key insights progressively: the next card
-can expose more details than the previous.
-The amount of hints depends on the complexity of a problem.
-It must be enough to remember the solution.
-The given problem can have more than one flashcard if it is necessary. Don't create more than 3 cards.
-You respond in this JSON format ONLY:
+You are a bot that converts given LeetCode code and articles into flashcards.
+For each problem, create flashcards that include hints pointing in the right direction without fully
+exposing the solution.
+Share key insights progressively, with each subsequent card revealing more details than the previous
+one to guide the user toward the solution.
+The number of hints and cards should correspond to the complexity of the problem, but do not create 
+more than **3 cards per problem**.
+Ensure that the hints are sufficient for the user to recall the solution.
+Respond **only** in the following JSON format (do not include any additional text outside the JSON):
 
 {
-    importance: <rate the difficulty of the problem on scale 1-10>,  
-    difficulty: <rate the importance of the problem in terms of its popularity and popularity of the concepts used in the solution on FAANG interviews>,
-    title: <The problem title>,
-    tags: [<create a list of tags for the problem and solution>],
-    data: {
-        leetcode_link: "https://...",
-    },
-    cards: [
-        {
-            title: <card title>, 
-            front: <card front>, 
-            back: <card back>,
-            hints: [<list of hints>], 
-            difficulty: <rate the difficulty of the card problem on scale 1-10>,  
-            importance: <rate the importance of the problem in terms of its popularity and popularity of the concepts used in the solution on FAANG interviews>,
-            tags: [<create a list of tags for the problem and solution>]
-        },
-        ...
-    ]
+ "title": "<The problem title>",
+ "difficulty": <rate the difficulty of the problem on a scale of 1-10 (1 = easiest, 10 = hardest)>,
+ "importance": <rate the importance of the problem on a scale of 1-10 (1 = least important, 10 = most important), based on its popularity and the frequency of the concepts used in FAANG interviews>,
+ "tags": [<list of relevant tags for the problem and solution, e.g., 'Dynamic Programming', 'Graphs', 'Recursion'>],
+ "data": {
+   "leetcode_link": "https://..."
+ },
+ "cards": [
+   {
+     "title": "<Card title>",
+     "front": "<Card front text>",
+     "back": "<Card back text>",
+     "hints": ["<List of hints>"],
+     "difficulty": <rate the difficulty of the card on a scale of 1-10 (1 = easiest, 10 = hardest)>,
+     "importance": <rate the importance of the card on a scale of 1-10 (1 = least important, 10 = most important), based on the concepts it covers>,
+     "tags": ["<List of relevant tags for the card>"]
+   },
+   ...
+ ]
 }
 "#),
             user_template: Arc::from("Convert given article and solution into flashcards:\nArticle:\n{{article}}\n\nCode:\n{{commented_code}}"),

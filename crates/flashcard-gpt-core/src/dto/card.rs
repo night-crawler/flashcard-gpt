@@ -48,3 +48,9 @@ impl From<&CardDto> for Thing {
         value.id.clone()
     }
 }
+
+#[derive(Debug, Serialize, Deserialize, Builder)]
+pub struct UpdateCardDto {
+    pub importance: Option<u8>,
+    pub difficulty: Option<u8>,
+}
