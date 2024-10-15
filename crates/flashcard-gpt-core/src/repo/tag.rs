@@ -1,4 +1,4 @@
-use crate::dto::tag::{CreateTagDto, TagDto};
+use crate::model::tag::{CreateTag, Tag};
 use crate::error::CoreError;
 use crate::ext::response_ext::ResponseExt;
 use crate::repo::generic_repo::GenericRepo;
@@ -9,7 +9,7 @@ use surrealdb::sql::Thing;
 use surrealdb::Surreal;
 use tracing::Span;
 
-pub type TagRepo = GenericRepo<CreateTagDto, TagDto, ()>;
+pub type TagRepo = GenericRepo<CreateTag, Tag, ()>;
 
 impl TagRepo {
     pub fn new_tag(db: Surreal<Client>, span: Span, enable_transactions: bool) -> Self {
@@ -20,7 +20,7 @@ impl TagRepo {
         &self,
         user_id: impl Into<Thing>,
         tags: impl IntoIterator<Item = Arc<str>>,
-    ) -> Result<Vec<TagDto>, CoreError> {
+    ) -> Result<Vec<Tag>, CoreError> {
         // we assume that slug after slugify stays the same
         let tags = tags
             .into_iter()
@@ -38,7 +38,7 @@ impl TagRepo {
         &self,
         user_id: impl Into<Thing>,
         tags: Vec<(Arc<str>, Arc<str>)>,
-    ) -> Result<Vec<TagDto>, CoreError> {
+    ) -> Result<Vec<Tag>, CoreError> {
         let query = format!(
             r#"
             {begin};
@@ -69,7 +69,7 @@ impl TagRepo {
 
         response.errors_or_ok()?;
 
-        let tags: Vec<TagDto> = response.take(response.num_statements() - 1)?;
+        let tags: Vec<Tag> = response.take(response.num_statements() - 1)?;
 
         Ok(tags)
     }

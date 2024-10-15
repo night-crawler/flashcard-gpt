@@ -1,12 +1,12 @@
-use crate::dto::time::Time;
-use crate::dto::user::User;
+use crate::model::time::Time;
+use crate::model::user::User;
 use bon::Builder;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use surrealdb::sql::Thing;
 
 #[derive(Debug, Serialize, Deserialize, Builder)]
-pub struct BindingDto {
+pub struct Binding {
     pub id: Thing,
     pub source_id: Arc<str>,
     pub type_name: Arc<str>,
@@ -16,7 +16,7 @@ pub struct BindingDto {
 }
 
 #[derive(Debug, Serialize, Deserialize, Builder)]
-pub struct GetOrCreateBindingDto {
+pub struct GetOrCreateBinding {
     pub source_id: Arc<str>,
     pub type_name: Arc<str>,
     pub email: Arc<str>,
@@ -25,14 +25,14 @@ pub struct GetOrCreateBindingDto {
     pub data: Option<serde_json::Value>,
 }
 
-impl From<BindingDto> for Thing {
-    fn from(value: BindingDto) -> Self {
+impl From<Binding> for Thing {
+    fn from(value: Binding) -> Self {
         value.id
     }
 }
 
-impl From<&BindingDto> for Thing {
-    fn from(value: &BindingDto) -> Self {
+impl From<&Binding> for Thing {
+    fn from(value: &Binding) -> Self {
         value.id.clone()
     }
 }

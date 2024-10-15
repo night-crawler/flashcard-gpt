@@ -1,19 +1,19 @@
-use crate::dto::card::CardDto;
-use crate::dto::deck::DeckDto;
-use crate::dto::time::Time;
+use crate::model::card::Card;
+use crate::model::deck::Deck;
+use crate::model::time::Time;
 use crate::reexports::db::sql::Thing;
 use bon::Builder;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 #[derive(Debug, Serialize, Deserialize, Builder)]
-pub struct DeckCardDto {
+pub struct DeckCard {
     pub id: Thing,
 
     #[serde(rename = "in")]
-    pub deck: Arc<DeckDto>,
+    pub deck: Arc<Deck>,
     #[serde(rename = "out")]
-    pub card: Arc<CardDto>,
+    pub card: Arc<Card>,
 
     pub num_answered: Option<usize>,
 
@@ -21,7 +21,7 @@ pub struct DeckCardDto {
 }
 
 #[derive(Debug, Serialize, Deserialize, Builder)]
-pub struct CreateDeckCardDto {
+pub struct CreateDeckCard {
     pub deck: Thing,
     pub card: Thing,
 }

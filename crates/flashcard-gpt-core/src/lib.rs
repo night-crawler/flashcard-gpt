@@ -3,7 +3,7 @@
 #![feature(array_chunks)]
 #![feature(iter_array_chunks)]
 
-pub mod dto;
+pub mod model;
 pub mod error;
 pub mod ext;
 pub mod llm;

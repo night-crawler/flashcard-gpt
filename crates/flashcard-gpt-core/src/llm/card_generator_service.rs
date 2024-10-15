@@ -1,7 +1,7 @@
-use crate::dto::card::CreateCardDto;
-use crate::dto::card_group::CreateCardGroupDto;
-use crate::dto::deck_card_group::{CreateDeckCardGroupDto, DeckCardGroupDto};
-use crate::dto::llm::GptCardGroup;
+use crate::model::card::CreateCard;
+use crate::model::card_group::CreateCardGroup;
+use crate::model::deck_card_group::{CreateDeckCardGroup, DeckCardGroup};
+use crate::model::llm::GptCardGroup;
 use crate::error::CoreError;
 use crate::llm::custom_executor::{CustomExecutor, CustomStep};
 use crate::reexports::db::sql::Thing;
@@ -148,7 +148,7 @@ Respond **only** in the following JSON format (do not include any additional tex
         user: impl Into<Thing>,
         deck: impl Into<Thing>,
         gpt_card_group: GptCardGroup,
-    ) -> Result<DeckCardGroupDto, CoreError> {
+    ) -> Result<DeckCardGroup, CoreError> {
         let user = user.into();
         let deck = deck.into();
 
@@ -160,7 +160,7 @@ Respond **only** in the following JSON format (do not include any additional tex
                 .await?;
             let card = self
                 .cards
-                .create(CreateCardDto {
+                .create(CreateCard {
                     user: user.clone(),
                     title: card.title,
                     front: Some(card.front),
@@ -185,7 +185,7 @@ Respond **only** in the following JSON format (do not include any additional tex
 
         let card_group = self
             .card_groups
-            .create(CreateCardGroupDto {
+            .create(CreateCardGroup {
                 user: user.clone(),
                 importance: gpt_card_group.importance,
                 title: gpt_card_group.title,
@@ -198,7 +198,7 @@ Respond **only** in the following JSON format (do not include any additional tex
 
         let deck_card_group = self
             .decks
-            .relate_card_group(CreateDeckCardGroupDto {
+            .relate_card_group(CreateDeckCardGroup {
                 deck: deck.clone(),
                 card_group: card_group.id,
             })

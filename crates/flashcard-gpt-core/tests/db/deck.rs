@@ -1,11 +1,11 @@
 use testresult::TestResult;
 
 use chrono::{DateTime, Days};
-use flashcard_gpt_core::dto::deck::{CreateDeckDto, DeckSettings};
-use flashcard_gpt_core::dto::deck_card::CreateDeckCardDto;
-use flashcard_gpt_core::dto::deck_card_group::CreateDeckCardGroupDto;
-use flashcard_gpt_core::dto::history::CreateHistoryDto;
-use flashcard_gpt_core::dto::time::Time;
+use flashcard_gpt_core::model::deck::{CreateDeck, DeckSettings};
+use flashcard_gpt_core::model::deck_card::CreateDeckCard;
+use flashcard_gpt_core::model::deck_card_group::CreateDeckCardGroup;
+use flashcard_gpt_core::model::history::CreateHistory;
+use flashcard_gpt_core::model::time::Time;
 use flashcard_gpt_tests::db::utils::{
     create_card, create_card_group, create_deck, create_deck_repo, create_history_repo, create_tag,
     create_user,
@@ -21,7 +21,7 @@ async fn test_create() -> TestResult {
 
     let tag = create_tag().user(&user).name("name").call().await?;
     let deck = repo
-        .create(CreateDeckDto {
+        .create(CreateDeck {
             description: Some(Arc::from("description")),
             parent: None,
             user: user.id.clone(),
@@ -82,7 +82,7 @@ async fn test_relate_card() -> TestResult {
             .await?;
 
         let relation = repo
-            .relate_card(CreateDeckCardDto {
+            .relate_card(CreateDeckCard {
                 deck: deck1.id.clone(),
                 card: card.id.clone(),
             })
@@ -136,7 +136,7 @@ async fn test_relate_card_group() -> TestResult {
         .await?;
 
     let relation = repo
-        .relate_card_group(CreateDeckCardGroupDto {
+        .relate_card_group(CreateDeckCardGroup {
             deck: deck1.id.clone(),
             card_group: card_group.id.clone(),
         })
@@ -186,7 +186,7 @@ async fn test_get_top_ranked_card_group() -> TestResult {
 
             if deck_index % 2 != 0 {
                 let deck_card = repo
-                    .relate_card(CreateDeckCardDto {
+                    .relate_card(CreateDeckCard {
                         deck: deck.id.clone(),
                         card: card.id.clone(),
                     })
@@ -208,7 +208,7 @@ async fn test_get_top_ranked_card_group() -> TestResult {
                 .call()
                 .await?;
             let deck_card_group = repo
-                .relate_card_group(CreateDeckCardGroupDto {
+                .relate_card_group(CreateDeckCardGroup {
                     deck: deck.id.clone(),
                     card_group: card_group.id.clone(),
                 })
@@ -224,7 +224,7 @@ async fn test_get_top_ranked_card_group() -> TestResult {
 
     for (index, deck_card) in deck_cards.iter().enumerate() {
         let item = history
-            .create_custom(CreateHistoryDto {
+            .create_custom(CreateHistory {
                 user: user.id.clone(),
                 deck_card: deck_card.id.clone().into(),
                 deck_card_group: None,
@@ -243,7 +243,7 @@ async fn test_get_top_ranked_card_group() -> TestResult {
 
     for (index, deck_card_group) in deck_card_groups.iter().enumerate() {
         let item = history
-            .create_custom(CreateHistoryDto {
+            .create_custom(CreateHistory {
                 user: user.id.clone(),
                 deck_card: None,
                 deck_card_group: deck_card_group.id.clone().into(),

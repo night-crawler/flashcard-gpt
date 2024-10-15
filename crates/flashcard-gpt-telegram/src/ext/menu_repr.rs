@@ -1,18 +1,18 @@
-use flashcard_gpt_core::dto::deck::DeckDto;
-use flashcard_gpt_core::dto::tag::TagDto;
+use flashcard_gpt_core::model::deck::Deck;
+use flashcard_gpt_core::model::tag::Tag;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 
 pub trait MenuReprExt {
     fn menu_repr(&self) -> InlineKeyboardButton;
 }
 
-impl MenuReprExt for TagDto {
+impl MenuReprExt for Tag {
     fn menu_repr(&self) -> InlineKeyboardButton {
         InlineKeyboardButton::callback(self.name.as_ref(), self.slug.as_ref())
     }
 }
 
-impl MenuReprExt for DeckDto {
+impl MenuReprExt for Deck {
     fn menu_repr(&self) -> InlineKeyboardButton {
         InlineKeyboardButton::callback(self.title.as_ref(), self.id.to_string())
     }

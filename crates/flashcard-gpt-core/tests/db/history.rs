@@ -1,7 +1,7 @@
-use flashcard_gpt_core::dto::deck_card::CreateDeckCardDto;
-use flashcard_gpt_core::dto::deck_card_group::CreateDeckCardGroupDto;
-use flashcard_gpt_core::dto::history::CreateHistoryDto;
-use flashcard_gpt_core::dto::time::Time;
+use flashcard_gpt_core::model::deck_card::CreateDeckCard;
+use flashcard_gpt_core::model::deck_card_group::CreateDeckCardGroup;
+use flashcard_gpt_core::model::history::CreateHistory;
+use flashcard_gpt_core::model::time::Time;
 use flashcard_gpt_tests::db::utils::{
     create_card, create_card_group, create_deck, create_deck_repo, create_history_repo, create_tag,
     create_user,
@@ -41,14 +41,14 @@ async fn test_create() -> TestResult {
         .await?;
 
     let deck_card = deck_repo
-        .relate_card(CreateDeckCardDto {
+        .relate_card(CreateDeckCard {
             deck: deck.id.clone(),
             card: card.id.clone(),
         })
         .await?;
 
     let history = repo
-        .create_custom(CreateHistoryDto {
+        .create_custom(CreateHistory {
             user: user.id.clone(),
             deck_card: Some(deck_card.id.clone()),
             deck_card_group: None,
@@ -61,7 +61,7 @@ async fn test_create() -> TestResult {
     assert_ne!(history.time.updated_at, time);
 
     let history = repo
-        .create_custom(CreateHistoryDto {
+        .create_custom(CreateHistory {
             user: user.id.clone(),
             deck_card: Some(deck_card.id.clone()),
             deck_card_group: None,
@@ -90,14 +90,14 @@ async fn test_create() -> TestResult {
         .await?;
 
     let deck_card_group = deck_repo
-        .relate_card_group(CreateDeckCardGroupDto {
+        .relate_card_group(CreateDeckCardGroup {
             deck: deck.id.clone(),
             card_group: card_group.id.clone(),
         })
         .await?;
 
     let history = repo
-        .create_custom(CreateHistoryDto {
+        .create_custom(CreateHistory {
             user: user.id.clone(),
             deck_card: None,
             deck_card_group: Some(deck_card_group.id.clone()),

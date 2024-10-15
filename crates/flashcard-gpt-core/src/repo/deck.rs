@@ -1,7 +1,7 @@
-use crate::dto::card::CardDto;
-use crate::dto::deck::{CreateDeckDto, DeckDto};
-use crate::dto::deck_card::{CreateDeckCardDto, DeckCardDto};
-use crate::dto::deck_card_group::{CreateDeckCardGroupDto, DeckCardGroupDto};
+use crate::model::card::Card;
+use crate::model::deck::{CreateDeck, Deck};
+use crate::model::deck_card::{CreateDeckCard, DeckCard};
+use crate::model::deck_card_group::{CreateDeckCardGroup, DeckCardGroup};
 use crate::error::CoreError;
 use crate::ext::response_ext::ResponseExt;
 use crate::repo::generic_repo::GenericRepo;
@@ -13,7 +13,7 @@ use surrealdb::sql::Thing;
 use surrealdb::Surreal;
 use tracing::Span;
 
-pub type DeckRepo = GenericRepo<CreateDeckDto, DeckDto, ()>;
+pub type DeckRepo = GenericRepo<CreateDeck, Deck, ()>;
 
 impl DeckRepo {
     pub fn new_deck(db: Surreal<Client>, span: Span, enable_transactions: bool) -> Self {
@@ -21,7 +21,7 @@ impl DeckRepo {
     }
 
     #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?dto))]
-    pub async fn relate_card(&self, dto: CreateDeckCardDto) -> Result<DeckCardDto, CoreError> {
+    pub async fn relate_card(&self, dto: CreateDeckCard) -> Result<DeckCard, CoreError> {
         let query = format!(
             r#"
             {begin_transaction}
@@ -41,8 +41,8 @@ impl DeckRepo {
     #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?dto))]
     pub async fn relate_card_group(
         &self,
-        dto: CreateDeckCardGroupDto,
-    ) -> Result<DeckCardGroupDto, CoreError> {
+        dto: CreateDeckCardGroup,
+    ) -> Result<DeckCardGroup, CoreError> {
         let dto = Arc::new(dto);
         let query = format!(
             r#"
@@ -64,7 +64,7 @@ impl DeckRepo {
         &self,
         user: impl Into<Thing>,
         deck: impl Into<Thing>,
-    ) -> Result<Vec<CardDto>, CoreError> {
+    ) -> Result<Vec<Card>, CoreError> {
         let query = format!(
             r#"
             {begin_transaction}
@@ -96,7 +96,7 @@ impl DeckRepo {
         &self,
         user: impl Into<Thing>,
         since: chrono::DateTime<Utc>,
-    ) -> Result<Vec<DeckCardGroupDto>, CoreError> {
+    ) -> Result<Vec<DeckCardGroup>, CoreError> {
         let query = r#"
         select 
             *,
@@ -130,7 +130,7 @@ impl DeckRepo {
         &self,
         user: impl Into<Thing>,
         since: chrono::DateTime<Utc>,
-    ) -> Result<Vec<DeckCardDto>, CoreError> {
+    ) -> Result<Vec<DeckCard>, CoreError> {
         let query = r#"
         select 
             *,
@@ -163,7 +163,7 @@ impl DeckRepo {
     pub async fn get_deck_card_group(
         &self,
         id: impl Into<Thing>,
-    ) -> Result<DeckCardGroupDto, CoreError> {
+    ) -> Result<DeckCardGroup, CoreError> {
         let query = r#"
          select 
             *
@@ -179,7 +179,7 @@ impl DeckRepo {
         single_object_query!(self.db, query, ("id", id.into()))
     }
 
-    pub async fn get_deck_card(&self, id: impl Into<Thing>) -> Result<DeckCardDto, CoreError> {
+    pub async fn get_deck_card(&self, id: impl Into<Thing>) -> Result<DeckCard, CoreError> {
         let query = r#"
          select 
             *

@@ -1,10 +1,10 @@
 use crate::db::{TestDbExt, TEST_DB};
 use bon::builder;
-use flashcard_gpt_core::dto::card::{CardDto, CreateCardDto};
-use flashcard_gpt_core::dto::card_group::{CardGroupDto, CreateCardGroupDto};
-use flashcard_gpt_core::dto::deck::{CreateDeckDto, DeckDto, DeckSettings};
-use flashcard_gpt_core::dto::tag::{CreateTagDto, TagDto};
-use flashcard_gpt_core::dto::user::{RegisterUserDto, User};
+use flashcard_gpt_core::model::card::{Card, CreateCard};
+use flashcard_gpt_core::model::card_group::{CardGroup, CreateCardGroup};
+use flashcard_gpt_core::model::deck::{CreateDeck, Deck, DeckSettings};
+use flashcard_gpt_core::model::tag::{CreateTag, Tag};
+use flashcard_gpt_core::model::user::{RegisterUser, User};
 use flashcard_gpt_core::repo::binding::BindingRepo;
 use flashcard_gpt_core::repo::card::CardRepo;
 use flashcard_gpt_core::repo::card_group::CardGroupRepo;
@@ -47,7 +47,7 @@ pub async fn create_user(name: &str) -> TestResult<User> {
     let repo = create_user_repo().await?;
 
     let user = repo
-        .create_user(RegisterUserDto {
+        .create_user(RegisterUser {
             email: format!("{}@example.com", name.to_lowercase()).into(),
             name: name.to_string().into(),
             password: name.to_string().into(),
@@ -58,14 +58,14 @@ pub async fn create_user(name: &str) -> TestResult<User> {
 }
 
 #[builder]
-pub async fn create_tag<U>(user: U, name: &str, slug: Option<&str>) -> TestResult<TagDto>
+pub async fn create_tag<U>(user: U, name: &str, slug: Option<&str>) -> TestResult<Tag>
 where
     U: Into<Thing>,
 {
     let repo = create_tag_repo().await?;
 
     let tag = repo
-        .create(CreateTagDto {
+        .create(CreateTag {
             name: Arc::from(name),
             slug: Arc::from(slug.unwrap_or(name)),
             user: user.into(),
@@ -82,7 +82,7 @@ pub async fn create_deck<U, Title, Tag, TagIter>(
     parent: Option<Thing>,
     settings: Option<DeckSettings>,
     tags: Option<TagIter>,
-) -> TestResult<DeckDto>
+) -> TestResult<Deck>
 where
     TagIter: IntoIterator<Item = Tag>,
     Tag: Into<Thing>,
@@ -100,7 +100,7 @@ where
     let title = title.into();
 
     let deck = repo
-        .create(CreateDeckDto {
+        .create(CreateDeck {
             description: Some(Arc::from(format!("description for {}", title.clone()))),
             parent: parent.map(Into::into),
             settings,
@@ -122,7 +122,7 @@ pub async fn create_card<U, Tag, TagIter, Title>(
     difficulty: Option<u8>,
     importance: Option<u8>,
     tags: Option<TagIter>,
-) -> TestResult<CardDto>
+) -> TestResult<Card>
 where
     TagIter: IntoIterator<Item = Tag>,
     Tag: Into<Thing>,
@@ -145,7 +145,7 @@ where
     let title = title.into();
 
     let card = repo
-        .create(CreateCardDto {
+        .create(CreateCard {
             user: user.into(),
             title: title.clone(),
             front: front.map(Arc::from).or(Some(title.clone())),
@@ -169,7 +169,7 @@ pub async fn create_card_group<U, Tag, Card, TagIter, CardIter, Title>(
     difficulty: Option<u8>,
     importance: Option<u8>,
     tags: Option<TagIter>,
-) -> TestResult<CardGroupDto>
+) -> TestResult<CardGroup>
 where
     CardIter: IntoIterator<Item = Card>,
     TagIter: IntoIterator<Item = Tag>,
@@ -189,7 +189,7 @@ where
     let cards = cards.into_iter().map(|c| c.into()).collect::<Vec<_>>();
 
     let card_group = repo
-        .create(CreateCardGroupDto {
+        .create(CreateCardGroup {
             user: user.into(),
             title: title.into(),
             importance: importance.unwrap_or(0),

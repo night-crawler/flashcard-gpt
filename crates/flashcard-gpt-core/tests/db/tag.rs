@@ -1,4 +1,4 @@
-use flashcard_gpt_core::dto::tag::CreateTagDto;
+use flashcard_gpt_core::model::tag::CreateTag;
 use flashcard_gpt_core::repo::tag::TagRepo;
 use flashcard_gpt_tests::db::utils::{create_tag_repo, create_user};
 use flashcard_gpt_tests::db::TestDbExt;
@@ -13,7 +13,7 @@ async fn test_create() -> TestResult {
     let repo = TagRepo::new_tag(db, span!(Level::INFO, "tag_create"), true);
     let user = create_user("tag_create").await?;
 
-    let tag = CreateTagDto {
+    let tag = CreateTag {
         user: user.id.clone(),
         name: Arc::from("title"),
         slug: Arc::from("slug"),
@@ -24,7 +24,7 @@ async fn test_create() -> TestResult {
     assert_eq!(tag.slug.as_ref(), "slug");
 
     for i in 0..10 {
-        let tag = CreateTagDto {
+        let tag = CreateTag {
             user: user.id.clone(),
             name: Arc::from(format!("title {i}")),
             slug: Arc::from(format!("slug-{i}")),
@@ -44,7 +44,7 @@ async fn test_get_or_create_tags() -> TestResult {
     let repo = create_tag_repo().await?;
     let user = create_user("tag_create_22").await?;
 
-    repo.create(CreateTagDto {
+    repo.create(CreateTag {
         user: user.id.clone(),
         name: Arc::from("not a title"),
         slug: Arc::from("not-a-title"),

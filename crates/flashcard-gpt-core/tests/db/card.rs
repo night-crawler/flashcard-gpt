@@ -1,4 +1,4 @@
-use flashcard_gpt_core::dto::card::{CreateCardDto, UpdateCardDto};
+use flashcard_gpt_core::model::card::{CreateCard, UpdateCard};
 use flashcard_gpt_core::repo::card::CardRepo;
 use flashcard_gpt_core::repo::tag::TagRepo;
 use flashcard_gpt_tests::db::utils::{create_card, create_tag, create_user};
@@ -15,7 +15,7 @@ async fn test_create() -> TestResult {
     let repo = CardRepo::new_card(db, span!(Level::INFO, "card_create"), true);
     let user = create_user("card_create").await?;
 
-    let card = CreateCardDto {
+    let card = CreateCard {
         user: user.id,
         title: Arc::from("title"),
         front: Some(Arc::from("a")),
@@ -81,7 +81,7 @@ async fn test_patch_card() -> TestResult {
     let repo = CardRepo::new_card(db, span!(Level::INFO, "patch_card"), true);
     let user = create_user("patch_card").await?;
 
-    let card = CreateCardDto {
+    let card = CreateCard {
         user: user.id,
         title: Arc::from("title"),
         front: Some(Arc::from("a")),
@@ -100,7 +100,7 @@ async fn test_patch_card() -> TestResult {
     let card = repo
         .patch(
             card.id.clone(),
-            UpdateCardDto {
+            UpdateCard {
                 importance: Some(6),
                 difficulty: Some(7),
             },

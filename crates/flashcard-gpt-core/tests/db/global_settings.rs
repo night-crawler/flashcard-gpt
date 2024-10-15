@@ -1,5 +1,5 @@
 use chrono_tz::Tz;
-use flashcard_gpt_core::dto::global_settings::CreateGlobalSettingsDto;
+use flashcard_gpt_core::model::global_settings::CreateGlobalSettings;
 use flashcard_gpt_tests::db::utils::{create_global_settings_repo, create_user};
 use std::ops::Add;
 use surrealdb::sql::Duration;
@@ -13,7 +13,7 @@ async fn test_create() -> TestResult {
         .add(Duration::from_secs(1))
         .add(Duration::from_millis(1));
     let settings = repo
-        .create(CreateGlobalSettingsDto {
+        .create(CreateGlobalSettings {
             user: user.id.clone(),
             daily_limit: 88,
             timetable: vec![
@@ -37,7 +37,7 @@ async fn test_create() -> TestResult {
 
     // second create for the same user must fail
     let result = repo
-        .create(CreateGlobalSettingsDto {
+        .create(CreateGlobalSettings {
             user: user.id.clone(),
             daily_limit: 88,
             timetable: vec![

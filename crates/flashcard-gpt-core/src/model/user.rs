@@ -1,4 +1,4 @@
-use crate::dto::time::Time;
+use crate::model::time::Time;
 use bon::Builder;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -15,7 +15,7 @@ pub struct User {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct RegisterUserDto {
+pub struct RegisterUser {
     pub email: Arc<str>,
     pub name: Arc<str>,
     pub password: Arc<str>,

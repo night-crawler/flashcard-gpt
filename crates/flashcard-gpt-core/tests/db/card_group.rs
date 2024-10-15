@@ -1,4 +1,4 @@
-use flashcard_gpt_core::dto::card_group::{CreateCardGroupDto, UpdateCardGroupDto};
+use flashcard_gpt_core::model::card_group::{CreateCardGroup, UpdateCardGroup};
 use flashcard_gpt_tests::db::utils::{
     create_card, create_card_group_repo, create_tag, create_user,
 };
@@ -30,7 +30,7 @@ async fn test_create() -> TestResult {
         .call()
         .await?;
 
-    let card_group = CreateCardGroupDto {
+    let card_group = CreateCardGroup {
         user: user.id,
         title: Arc::from("title"),
         importance: 1,
@@ -61,7 +61,7 @@ async fn test_patch() -> TestResult {
         .call()
         .await?;
 
-    let card_group = CreateCardGroupDto {
+    let card_group = CreateCardGroup {
         user: user.id,
         title: Arc::from("title"),
         importance: 1,
@@ -77,7 +77,7 @@ async fn test_patch() -> TestResult {
     let cg = repo
         .patch(
             card_group.id.clone(),
-            UpdateCardGroupDto {
+            UpdateCardGroup {
                 importance: Some(3),
                 difficulty: Some(4),
             },
@@ -89,7 +89,7 @@ async fn test_patch() -> TestResult {
     let cg = repo
         .patch(
             card_group.id.clone(),
-            UpdateCardGroupDto {
+            UpdateCardGroup {
                 importance: None,
                 difficulty: None,
             },
@@ -101,7 +101,7 @@ async fn test_patch() -> TestResult {
     let cg = repo
         .patch(
             card_group.id.clone(),
-            UpdateCardGroupDto {
+            UpdateCardGroup {
                 importance: Some(7),
                 difficulty: None,
             },

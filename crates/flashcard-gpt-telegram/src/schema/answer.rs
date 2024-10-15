@@ -4,8 +4,8 @@ use crate::command::root::RootCommand;
 use crate::schema::root::handle_show_generic_menu;
 use crate::state::bot_state::BotState;
 use anyhow::bail;
-use flashcard_gpt_core::dto::card::UpdateCardDto;
-use flashcard_gpt_core::dto::card_group::UpdateCardGroupDto;
+use flashcard_gpt_core::model::card::UpdateCard;
+use flashcard_gpt_core::model::card_group::UpdateCardGroup;
 use flashcard_gpt_core::reexports::db::syn;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
 use teloxide::dptree::{case, Handler};
@@ -54,7 +54,7 @@ async fn handle_set_difficulty(manager: ChatManager, difficulty: u8) -> anyhow::
         manager
             .update_deck_card_group_inner(
                 dcg_id.clone(),
-                UpdateCardGroupDto::builder().difficulty(difficulty).build(),
+                UpdateCardGroup::builder().difficulty(difficulty).build(),
             )
             .await?;
     }
@@ -63,7 +63,7 @@ async fn handle_set_difficulty(manager: ChatManager, difficulty: u8) -> anyhow::
         manager
             .update_deck_card_inner(
                 dc_id.clone(),
-                UpdateCardDto::builder().difficulty(difficulty).build(),
+                UpdateCard::builder().difficulty(difficulty).build(),
             )
             .await?;
     }
@@ -77,7 +77,7 @@ async fn handle_set_importance(manager: ChatManager, importance: u8) -> anyhow::
         manager
             .update_deck_card_group_inner(
                 dcg_id.clone(),
-                UpdateCardGroupDto::builder().importance(importance).build(),
+                UpdateCardGroup::builder().importance(importance).build(),
             )
             .await?;
     }
@@ -86,7 +86,7 @@ async fn handle_set_importance(manager: ChatManager, importance: u8) -> anyhow::
         manager
             .update_deck_card_inner(
                 dc_id.clone(),
-                UpdateCardDto::builder().importance(importance).build(),
+                UpdateCard::builder().importance(importance).build(),
             )
             .await?;
     }

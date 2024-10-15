@@ -66,13 +66,13 @@ where
         }
     }
 
-    #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?create_dto)
+    #[tracing::instrument(level = "info", skip_all, parent = self.span.clone(), err, fields(?create)
     )]
-    pub async fn create(&self, create_dto: Create) -> Result<Read, CoreError> {
+    pub async fn create(&self, create: Create) -> Result<Read, CoreError> {
         self.db
             .create_entity(
                 self.table_name,
-                create_dto,
+                create,
                 self.fetch,
                 self.enable_transactions,
             )
@@ -171,7 +171,7 @@ where
         }
     }
 
-    pub async fn patch(&self, id: impl Into<Thing>, update_dto: Update) -> Result<Read, CoreError> {
+    pub async fn patch(&self, id: impl Into<Thing>, update: Update) -> Result<Read, CoreError> {
         let id = id.into();
         let query = format!(
             r#"
@@ -191,6 +191,6 @@ where
             fetch = self.fetch_statement()
         );
 
-        single_object_query!(self.db, &query, ("dto", update_dto), ("id", id))
+        single_object_query!(self.db, &query, ("dto", update), ("id", id))
     }
 }

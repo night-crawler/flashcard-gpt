@@ -1,7 +1,7 @@
 use flashcard_gpt_core::llm::custom_executor::CustomExecutor;
 use std::sync::Arc;
 
-use flashcard_gpt_core::dto::llm::{GptCard, GptCardGroup};
+use flashcard_gpt_core::model::llm::{GptCard, GptCardGroup};
 use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
 use flashcard_gpt_tests::db::utils::{
     create_card_group_repo, create_card_repo, create_deck, create_deck_repo, create_tag,

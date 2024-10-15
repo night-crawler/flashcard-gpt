@@ -7,7 +7,7 @@ use crate::schema::card::card_schema;
 use crate::schema::deck::deck_schema;
 use crate::schema::root::{receive_inline_query, receive_root_menu_item, root_schema};
 use crate::state::bot_state::{BotState, FlashGptDialogue};
-use flashcard_gpt_core::dto::binding::BindingDto;
+use flashcard_gpt_core::model::binding::Binding;
 use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
 use std::sync::Arc;
 use teloxide::adaptors::DefaultParseMode;
@@ -48,7 +48,7 @@ fn init_chat_manager(
     update: Update,
     generator: CardGeneratorService,
     repositories: Repositories,
-    binding: Arc<BindingDto>,
+    binding: Arc<Binding>,
     bot: DefaultParseMode<Bot>,
     dialogue: FlashGptDialogue,
     markdown_formatter: MarkdownFormatter,
@@ -71,7 +71,7 @@ fn init_chat_manager(
     }
 }
 
-async fn create_binding(update: Update, repositories: Repositories) -> Option<Arc<BindingDto>> {
+async fn create_binding(update: Update, repositories: Repositories) -> Option<Arc<Binding>> {
     let Ok(entity) = BindingEntity::try_from(&update) else {
         warn!(?update, "Unable to create binding entity from the update.");
         return None;

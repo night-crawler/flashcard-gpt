@@ -1,7 +1,7 @@
 use crate::ext::json_value::ValueExt;
-use flashcard_gpt_core::dto::binding::BindingDto;
-use flashcard_gpt_core::dto::card::CardDto;
-use flashcard_gpt_core::dto::card_group::CardGroupDto;
+use flashcard_gpt_core::model::binding::Binding;
+use flashcard_gpt_core::model::card::Card;
+use flashcard_gpt_core::model::card_group::CardGroup;
 use serde_json::Value;
 
 pub trait ExtractValueExt {
@@ -9,7 +9,7 @@ pub trait ExtractValueExt {
     fn extract_str(&self, key: &str) -> Option<&str>;
 }
 
-impl ExtractValueExt for CardDto {
+impl ExtractValueExt for Card {
     fn extract_value(&self, key: &str) -> Option<&Value> {
         self.data.as_ref()?.get_value_by(key)
     }
@@ -19,7 +19,7 @@ impl ExtractValueExt for CardDto {
     }
 }
 
-impl ExtractValueExt for CardGroupDto {
+impl ExtractValueExt for CardGroup {
     fn extract_value(&self, key: &str) -> Option<&Value> {
         self.data.as_ref()?.get_value_by(key)
     }
@@ -29,7 +29,7 @@ impl ExtractValueExt for CardGroupDto {
     }
 }
 
-impl ExtractValueExt for BindingDto {
+impl ExtractValueExt for Binding {
     fn extract_value(&self, key: &str) -> Option<&Value> {
         self.data.as_ref()?.get_value_by(key)
     }

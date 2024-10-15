@@ -12,12 +12,12 @@ use crate::state::state_description::StateDescription;
 use crate::state::state_fields::StateFields;
 use anyhow::bail;
 use chrono::{TimeDelta, Utc};
-use flashcard_gpt_core::dto::binding::BindingDto;
-use flashcard_gpt_core::dto::card::{CardDto, UpdateCardDto};
-use flashcard_gpt_core::dto::card_group::{CardGroupDto, UpdateCardGroupDto};
-use flashcard_gpt_core::dto::history::CreateHistoryDto;
-use flashcard_gpt_core::dto::tag::TagDto;
-use flashcard_gpt_core::dto::user::User;
+use flashcard_gpt_core::model::binding::Binding;
+use flashcard_gpt_core::model::card::{Card, UpdateCard};
+use flashcard_gpt_core::model::card_group::{CardGroup, UpdateCardGroup};
+use flashcard_gpt_core::model::history::CreateHistory;
+use flashcard_gpt_core::model::tag::Tag;
+use flashcard_gpt_core::model::user::User;
 use flashcard_gpt_core::llm::card_generator_service::CardGeneratorService;
 use flashcard_gpt_core::reexports::db::sql::{Duration, Thing};
 use itertools::Itertools;
@@ -44,7 +44,7 @@ pub struct ChatManager {
     pub repo: Repositories,
     pub generator: CardGeneratorService,
     pub formatter: MarkdownFormatter,
-    pub binding: Arc<BindingDto>,
+    pub binding: Arc<Binding>,
     pub bot: DefaultParseMode<Bot>,
     pub dialogue: FlashGptDialogue,
     pub message: Option<Arc<Message>>,
@@ -273,7 +273,7 @@ impl ChatManager {
 
     fn serialize_tags(
         &self,
-        tags: impl IntoIterator<Item = impl AsRef<TagDto>>,
+        tags: impl IntoIterator<Item = impl AsRef<Tag>>,
     ) -> anyhow::Result<String> {
         let tags = tags
             .into_iter()
@@ -285,7 +285,7 @@ impl ChatManager {
         Ok(tags)
     }
 
-    pub async fn send_card_group(&self, cg: &CardGroupDto) -> anyhow::Result<()> {
+    pub async fn send_card_group(&self, cg: &CardGroup) -> anyhow::Result<()> {
         let title = format!("<b>{}</b>", self.formatter.to_html(cg.title.as_ref())?);
         let title = if let Some(link) = cg.extract_str("leetcode_link") {
             format!(r#"<a href="{}">{title}</a>"#, link)
@@ -307,7 +307,7 @@ impl ChatManager {
         Ok(())
     }
 
-    pub async fn send_card(&self, card: &CardDto) -> anyhow::Result<()> {
+    pub async fn send_card(&self, card: &Card) -> anyhow::Result<()> {
         let title = format!("<b>{}</b>", self.formatter.to_html(card.title.as_ref())?);
         let title = if let Some(link) = card.extract_str("leetcode_link") {
             format!(r#"<a href="{}">{title}</a>"#, link)
@@ -389,7 +389,7 @@ impl ChatManager {
         if let Some(Some(dcg_id)) = fields.deck_card_group_id() {
             self.repo
                 .history
-                .create_custom(CreateHistoryDto {
+                .create_custom(CreateHistory {
                     user: self.binding.user.id.clone(),
                     deck_card: None,
                     deck_card_group: dcg_id.clone().into(),
@@ -404,7 +404,7 @@ impl ChatManager {
         if let Some(Some(dc_id)) = fields.deck_card_id() {
             self.repo
                 .history
-                .create_custom(CreateHistoryDto {
+                .create_custom(CreateHistory {
                     user: self.binding.user.id.clone(),
                     deck_card: dc_id.clone().into(),
                     deck_card_group: None,
@@ -546,8 +546,8 @@ impl ChatManager {
     pub async fn update_deck_card_group_inner(
         &self,
         dcg_id: impl Into<Thing>,
-        update_card_group_dto: UpdateCardGroupDto,
-    ) -> anyhow::Result<CardGroupDto> {
+        update: UpdateCardGroup,
+    ) -> anyhow::Result<CardGroup> {
         let cg_id = self
             .repo
             .decks
@@ -559,7 +559,7 @@ impl ChatManager {
         let cg = self
             .repo
             .card_groups
-            .patch(cg_id, update_card_group_dto)
+            .patch(cg_id, update)
             .await?;
         Ok(cg)
     }
@@ -567,10 +567,10 @@ impl ChatManager {
     pub async fn update_deck_card_inner(
         self,
         dc_id: impl Into<Thing>,
-        update_card_dto: UpdateCardDto,
-    ) -> anyhow::Result<CardDto> {
+        update_card: UpdateCard,
+    ) -> anyhow::Result<Card> {
         let card_id = self.repo.decks.get_deck_card(dc_id).await?.card.id.clone();
-        let cg = self.repo.cards.patch(card_id, update_card_dto).await?;
+        let cg = self.repo.cards.patch(card_id, update_card).await?;
         Ok(cg)
     }
 }

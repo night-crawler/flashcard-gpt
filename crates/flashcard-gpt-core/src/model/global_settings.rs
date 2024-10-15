@@ -1,5 +1,5 @@
-use crate::dto::time::Time;
-use crate::dto::user::User;
+use crate::model::time::Time;
+use crate::model::user::User;
 use crate::reexports::db::sql::Thing;
 use bon::Builder;
 use chrono::{DateTime, NaiveTime};
@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use surrealdb::sql::Duration;
 
 #[derive(Debug, Serialize, Deserialize, Builder)]
-pub struct GlobalSettingsDto {
+pub struct GlobalSettings {
     pub id: Thing,
     pub daily_limit: u16,
     pub timetable: Vec<[Duration; 2]>,
@@ -17,7 +17,7 @@ pub struct GlobalSettingsDto {
     pub time: Time,
 }
 
-impl GlobalSettingsDto {
+impl GlobalSettings {
     pub fn ts_matches(&self, now: DateTime<Tz>) -> bool {
         let current_time = now.time();
         let now_duration = current_time
@@ -38,21 +38,21 @@ impl GlobalSettingsDto {
 }
 
 #[derive(Debug, Serialize, Deserialize, Builder)]
-pub struct CreateGlobalSettingsDto {
+pub struct CreateGlobalSettings {
     pub user: Thing,
     pub daily_limit: u16,
     pub timetable: Vec<[Duration; 2]>,
     pub timezone: Tz,
 }
 
-impl From<GlobalSettingsDto> for Thing {
-    fn from(value: GlobalSettingsDto) -> Self {
+impl From<GlobalSettings> for Thing {
+    fn from(value: GlobalSettings) -> Self {
         value.id
     }
 }
 
-impl From<&GlobalSettingsDto> for Thing {
-    fn from(value: &GlobalSettingsDto) -> Self {
+impl From<&GlobalSettings> for Thing {
+    fn from(value: &GlobalSettings) -> Self {
         value.id.clone()
     }
 }
@@ -64,8 +64,8 @@ mod tests {
     use std::sync::Arc;
     use testresult::TestResult;
 
-    fn build_test_settings(durations: Vec<[Duration; 2]>) -> GlobalSettingsDto {
-        GlobalSettingsDto {
+    fn build_test_settings(durations: Vec<[Duration; 2]>) -> GlobalSettings {
+        GlobalSettings {
             id: Thing::from(("test_user", "aaa")),
             daily_limit: 100,
             time: Time::default(),

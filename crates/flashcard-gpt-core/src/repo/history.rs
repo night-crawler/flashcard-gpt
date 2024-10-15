@@ -1,4 +1,4 @@
-use crate::dto::history::{CreateHistoryDto, HistoryDto};
+use crate::model::history::{CreateHistory, HistoryRecord};
 use crate::error::CoreError;
 use crate::ext::response_ext::ResponseExt;
 use std::sync::Arc;
@@ -9,7 +9,7 @@ use surrealdb::engine::remote::ws::Client;
 use surrealdb::Surreal;
 use tracing::Span;
 
-pub type HistoryRepo = GenericRepo<CreateHistoryDto, HistoryDto, ()>;
+pub type HistoryRepo = GenericRepo<CreateHistory, HistoryRecord, ()>;
 
 impl HistoryRepo {
     pub fn new_history(db: Surreal<Client>, span: Span, enable_transactions: bool) -> Self {
@@ -34,7 +34,7 @@ impl HistoryRepo {
         )
     }
 
-    pub async fn create_custom(&self, dto: CreateHistoryDto) -> Result<HistoryDto, CoreError> {
+    pub async fn create_custom(&self, dto: CreateHistory) -> Result<HistoryRecord, CoreError> {
         let query = format!(
             r#"
             {begin}

@@ -7,9 +7,9 @@ use crate::schema::root::{cancel, handle_show_generic_menu};
 use crate::state::bot_state::BotState;
 use crate::state::state_fields::StateFields;
 use anyhow::anyhow;
-use flashcard_gpt_core::dto::card::CreateCardDto;
-use flashcard_gpt_core::dto::deck_card::CreateDeckCardDto;
-use flashcard_gpt_core::dto::llm::GptCardGroup;
+use flashcard_gpt_core::model::card::CreateCard;
+use flashcard_gpt_core::model::deck_card::CreateDeckCard;
+use flashcard_gpt_core::model::llm::GptCardGroup;
 use serde_json::Value;
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -258,7 +258,7 @@ async fn create_card(manager: ChatManager) -> anyhow::Result<()> {
     let card = manager
         .repo
         .cards
-        .create(CreateCardDto {
+        .create(CreateCard {
             user: user.id.clone(),
             title,
             front,
@@ -279,7 +279,7 @@ async fn create_card(manager: ChatManager) -> anyhow::Result<()> {
         let rel = manager
             .repo
             .decks
-            .relate_card(CreateDeckCardDto {
+            .relate_card(CreateDeckCard {
                 deck: deck.as_thing()?,
                 card: card.id.clone(),
             })

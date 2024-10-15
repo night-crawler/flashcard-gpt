@@ -1,8 +1,8 @@
 use crate::ext::binding::{BindingEntity, BindingExt};
 use crate::ext::menu_repr::IteratorMenuReprExt;
 use chrono_tz::Tz;
-use flashcard_gpt_core::dto::binding::BindingDto;
-use flashcard_gpt_core::dto::global_settings::{CreateGlobalSettingsDto, GlobalSettingsDto};
+use flashcard_gpt_core::model::binding::Binding;
+use flashcard_gpt_core::model::global_settings::{CreateGlobalSettings, GlobalSettings};
 use flashcard_gpt_core::error::CoreError;
 use flashcard_gpt_core::reexports::db::engine::remote::ws::Client;
 use flashcard_gpt_core::reexports::db::sql::{Duration, Thing};
@@ -69,7 +69,7 @@ impl Repositories {
     pub async fn get_binding(
         &self,
         msg: impl Into<BindingEntity<'_>>,
-    ) -> Result<BindingDto, CoreError> {
+    ) -> Result<Binding, CoreError> {
         self.bindings
             .get_or_create_telegram_binding(msg.into())
             .await
@@ -79,14 +79,14 @@ impl Repositories {
     pub async fn get_global_settings_or_default(
         &self,
         user: impl Into<Thing>,
-    ) -> Result<GlobalSettingsDto, CoreError> {
+    ) -> Result<GlobalSettings, CoreError> {
         let user = user.into();
         let global_settings = match self.global_settings.get_by_user_id(user.clone()).await {
             Ok(global_settings) => global_settings,
             Err(err) => {
                 error!(?err, %user, "Failed to get user settings, attempting to create default");
                 self.global_settings
-                    .create(CreateGlobalSettingsDto {
+                    .create(CreateGlobalSettings {
                         user: user.clone(),
                         daily_limit: 50,
                         timetable: vec![

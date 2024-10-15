@@ -9,7 +9,7 @@ use crate::patch_state;
 use crate::state::bot_state::{BotState, FlashGptDialogue};
 use crate::state::state_fields::StateFields;
 use anyhow::anyhow;
-use flashcard_gpt_core::dto::deck::{CreateDeckDto, DeckSettings};
+use flashcard_gpt_core::model::deck::{CreateDeck, DeckSettings};
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use teloxide::dispatching::{DpHandlerDescription, UpdateFilterExt};
@@ -203,7 +203,7 @@ async fn create_deck(
 
     let deck = repositories
         .decks
-        .create(CreateDeckDto {
+        .create(CreateDeck {
             title,
             description,
             parent,

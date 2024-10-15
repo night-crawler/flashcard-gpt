@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use flashcard_gpt_core::dto::binding::{BindingDto, GetOrCreateBindingDto};
+use flashcard_gpt_core::model::binding::{Binding, GetOrCreateBinding};
 use flashcard_gpt_core::error::CoreError;
 use flashcard_gpt_core::repo::binding::BindingRepo;
 use serde::{Deserialize, Serialize};
@@ -14,14 +14,14 @@ pub trait BindingExt {
     fn get_or_create_telegram_binding(
         &self,
         entity: impl Into<BindingEntity<'_>>,
-    ) -> impl Future<Output = Result<BindingDto, CoreError>>;
+    ) -> impl Future<Output = Result<Binding, CoreError>>;
 }
 
 impl BindingExt for BindingRepo {
     async fn get_or_create_telegram_binding(
         &self,
         entity: impl Into<BindingEntity<'_>>,
-    ) -> Result<BindingDto, CoreError> {
+    ) -> Result<Binding, CoreError> {
         let entity = entity.into();
         let source_id = entity.id();
 
@@ -30,7 +30,7 @@ impl BindingExt for BindingRepo {
             return Ok(binding);
         }
 
-        let binding_dto = GetOrCreateBindingDto {
+        let binding = GetOrCreateBinding {
             source_id,
             name: entity.name(),
             type_name: Arc::from("telegram"),
@@ -39,7 +39,7 @@ impl BindingExt for BindingRepo {
             email: entity.email(),
         };
 
-        self.get_or_create_binding(binding_dto).await
+        self.get_or_create_binding(binding).await
     }
 }
 
@@ -166,7 +166,7 @@ pub trait ChatIdExt {
     fn get_chat_id(&self) -> anyhow::Result<ChatId>;
 }
 
-impl ChatIdExt for BindingDto {
+impl ChatIdExt for Binding {
     fn get_chat_id(&self) -> anyhow::Result<ChatId> {
         let chat_id = self
             .data
